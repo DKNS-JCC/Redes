@@ -36,10 +36,38 @@ int main(int argc, char *argv[])
 	/* This example uses TAM_BUFFER byte messages. */
 	char buf[TAM_BUFFER];
 
-	if (argc != 3)
+	char usuario[50]; // Usuario a buscar
+	char host[70] = "127.0.0.1";	  // Host al que se conecta
+
+	// Verificar argumentos
+	if (argc > 3)
 	{
-		// Argumentos incorrectos para arrancar
+		fprintf(stderr, "Usage: %s TCP/UDP [usuario/nombrereal][usuario@host]\n", argv[0]);
 		exit(1);
+	}
+	else if (argc == 2)
+	{
+		if (strchr(argv[1], '@') == NULL) // Si no se encuentra el caracter @ es usuario o host
+		{
+			if (strchr(argv[1], '.') == NULL) // Si no se encuentra el caracter . es usuario
+			{
+				strcpy(usuario, argv[1]);
+				strcpy(host, "127.0.0.1");
+			}
+			else
+			{
+				strcpy(host, argv[1]);
+			}
+		}
+		else // Si se encuentra el caracter @ es usuario@host.es
+		{
+			strcpy(usuario, strtok(argv[1], "@"));
+			strcpy(host, strtok(NULL, "@"));
+		}
+	}
+	else
+	{
+		strcpy(host, "127.0.0.1");
 	}
 
 	// Create the socket.
@@ -75,7 +103,7 @@ int main(int argc, char *argv[])
 	 * &hints: estructura con informacion de la direccion
 	 * &res(ultado): estructura con informacion de la direccion
 	 */
-	errcode = getaddrinfo(argv[1], NULL, &hints, &res);
+	errcode = getaddrinfo(host, NULL, &hints, &res); // Se obtiene la IP del host
 	if (errcode != 0)
 	{
 		fprintf(stderr, "%s: No es posible resolver la IP de %s\n", argv[0], argv[1]);
@@ -83,7 +111,6 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-		// Si todo sale bien, se obtiene la IP del servidor
 		servaddr_in.sin_addr = ((struct sockaddr_in *)res->ai_addr)->sin_addr;
 	}
 
@@ -126,11 +153,11 @@ int main(int argc, char *argv[])
 	}
 	time(&timevar);
 
-	printf("Connected to %s on port %u at %s", argv[1], ntohs(myaddr_in.sin_port), (char *)ctime(&timevar));
+	printf("Connected to %s on port %u at %s", host, ntohs(myaddr_in.sin_port), (char *)ctime(&timevar));
 
-	// Envio de mensajes
-
+	// AQUI SE LLENA EL BUFFER CON EL MENSAJE FINGER =======================================================================
 	// Llenar el buffer con el mensaje que sea
+
 	/*Uso de send
 	 * send(s, buf, TAM_BUFFER, 0)
 	 * s: socket descriptor
