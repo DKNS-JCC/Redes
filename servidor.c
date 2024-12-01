@@ -21,7 +21,7 @@
 #define PUERTO 13131
 #define ADDRNOTFOUND 0xffffffff
 #define BUFFERSIZE 1024
-#define TAM_BUFFER 10
+#define TAM_BUFFER 512
 #define MAXHOST 128
 
 extern int errno;
@@ -363,7 +363,14 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			len += len1;
 		}
 		reqcnt++;
-		//Mostrar 
+		
+		//Buscar en carpetas del sistema el finger
+		//Llenar el buffer con el mensaje que sea
+		execute_system_command("finger", buf);
+		//Crea un string con el finger
+		char finger[TAM_BUFFER];
+
+
 
 		//Envio de la respuesta al cliente con el finger
 		if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
@@ -392,6 +399,26 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	 */
 	printf("Completed %s port %u, %d requests, at %s\n",
 		   hostname, ntohs(clientaddr_in.sin_port), reqcnt, (char *)ctime(&timevar));
+}
+
+void execute_system_command(const char *command, char *output) {
+    FILE *fp;
+    char buffer[50];
+
+    fp = popen(command, "r");
+    if (fp == NULL) {
+        perror("Error ejecutando el comando");
+        strcpy(output, "Error"); // En caso de error, almacenar un mensaje predeterminado
+        return;
+    }
+
+    if (fgets(buffer, sizeof(buffer), fp) != NULL) {
+        strcpy(output, buffer);
+        output[strcspn(output, "\n")] = '\0';
+    } else {
+        strcpy(output, "Sin salida");
+    }
+    pclose(fp);
 }
 
 /*
