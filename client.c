@@ -433,8 +433,6 @@ void funcionUDP(char usuario[], char host[])
 	n_retry = RETRIES;
 
 	while (n_retry > 0) {
-        // Agregar salto de línea al mensaje
-        strcat(usuario, "\r\n");
 
         // Enviar el mensaje al servidor
         if (sendto(s, usuario, strlen(usuario), 0, (struct sockaddr *)&servaddr_in, sizeof(servaddr_in)) == -1) {

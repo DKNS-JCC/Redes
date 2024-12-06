@@ -42,6 +42,7 @@ void errout(char *); /* declare error out routine */
 
 int FIN = 0; /* Para el cierre ordenado */
 void finalizar() { FIN = 1; }
+void recogerDatos(char *usuario);
 
 int main(argc, argv)
 int argc;
@@ -449,52 +450,111 @@ void errout(char *hostname)
  *	logging information to stdout.
  *
  */
-void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in) {
-    struct in_addr reqaddr;       /* Para la dirección solicitada */
-    int nc, errcode;
-    socklen_t addrlen = sizeof(clientaddr_in);
+void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
+{
+	struct in_addr reqaddr; /* Para la dirección solicitada */
+	int nc, errcode;
+	socklen_t addrlen = sizeof(clientaddr_in);
 
-    printf("Esperando datos UDP...\n");
+	printf("Esperando datos UDP...\n");
 
-    // Recibir datos del cliente
-    ssize_t received_len = recvfrom(s, buffer, TAM_BUFFER, 0, (struct sockaddr *)&clientaddr_in, &addrlen);
-    if (received_len == -1) {
-        perror("Error al recibir datos");
-        return;
-    }
+	// Recibir datos del cliente
+	ssize_t received_len = recvfrom(s, buffer, TAM_BUFFER, 0, (struct sockaddr *)&clientaddr_in, &addrlen);
+	if (received_len == -1)
+	{
+		perror("Error al recibir datos");
+		return;
+	}
 
-    // Asegurar terminación nula si se trata de datos de texto
-    if (received_len < TAM_BUFFER) {
-        buffer[received_len] = '\0';
-    }
+	// Asegurar terminación nula si se trata de datos de texto
+	if (received_len < TAM_BUFFER)
+	{
+		buffer[received_len] = '\0';
+	}
 
-    // Mostrar la información del cliente y los datos recibidos
-    char client_ip[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &clientaddr_in.sin_addr, client_ip, INET_ADDRSTRLEN);
-    printf("Mensaje recibido de %s:%d\n", client_ip, ntohs(clientaddr_in.sin_port));
-    printf("Datos recibidos (%zd bytes): %s\n", received_len, buffer);
+	// Mostrar la información del cliente y los datos recibidos
+	char client_ip[INET_ADDRSTRLEN];
+	inet_ntop(AF_INET, &clientaddr_in.sin_addr, client_ip, INET_ADDRSTRLEN);
+	printf("Mensaje recibido de %s:%d\n", client_ip, ntohs(clientaddr_in.sin_port));
+	printf("Datos recibidos (%zd bytes): %s\n", received_len, buffer);
 
-    // Resolver el nombre recibido (si aplica)
-    struct addrinfo hints, *res;
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_INET;
+	recogerDatos(buffer);
+	printf ("Datos recogidos: %s\n", buffer);
+
+
+	// Resolver el nombre recibido (si aplica)
+	struct addrinfo hints, *res;
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_INET;
 	/*
-    errcode = getaddrinfo(buffer, NULL, &hints, &res);
-    if (errcode != 0) {
-        printf("No se pudo resolver '%s'.\n", buffer);
-        reqaddr.s_addr = ADDRNOTFOUND;
-    } else {
-        reqaddr = ((struct sockaddr_in *)res->ai_addr)->sin_addr;
-        freeaddrinfo(res);
-    }
+	errcode = getaddrinfo(buffer, NULL, &hints, &res);
+	if (errcode != 0) {
+		printf("No se pudo resolver '%s'.\n", buffer);
+		reqaddr.s_addr = ADDRNOTFOUND;
+	} else {
+		reqaddr = ((struct sockaddr_in *)res->ai_addr)->sin_addr;
+		freeaddrinfo(res);
+	}
 	*/
-    // Enviar la dirección resuelta al cliente
-    nc = sendto(s, &reqaddr, sizeof(struct in_addr), 0, (struct sockaddr *)&clientaddr_in, addrlen);
-    if (nc == -1) {
-        perror("Error al enviar respuesta");
-        printf("No se pudo enviar la respuesta al cliente.\n");
-        return;
-    }
+	// Enviar la dirección resuelta al cliente
+	nc = sendto(s, &reqaddr, sizeof(struct in_addr), 0, (struct sockaddr *)&clientaddr_in, addrlen);
+	if (nc == -1)
+	{
+		perror("Error al enviar respuesta");
+		printf("No se pudo enviar la respuesta al cliente.\n");
+		return;
+	}
 
-    printf("Respuesta enviada al cliente.\n");
+	printf("Respuesta enviada al cliente.\n");
+}
+
+void recogerDatos(char *usuario)
+{
+	if (strcmp(usuario, "null") == 0)
+	{
+		// Recoger datos de todos los usuarios
+		// Formato de respuesta -> usuario1|usuario2|usuario3|...
+		FILE *fp;
+		char line[256];
+		char usuarios[1024] = ""; // Buffer para almacenar la cadena final
+
+		// Ejecutamos el comando `w` y obtenemos la salida
+		fp = popen("w", "r");
+		if (fp == NULL)
+		{
+			perror("No se pudo ejecutar el comando who");
+		}
+
+		int i = 0;
+		// Leer cada línea de la salida de `who`
+		while (fgets(line, sizeof(line), fp))
+		{
+			i++;
+			// Extraemos el nombre de usuario (la primera palabra de cada línea, obviando las dos primeras lineas)
+			if (i <= 2)
+			{
+				continue;
+			}
+			char usuario[64];
+			sscanf(line, "%s", usuario);
+
+			// Si la cadena no está vacía, añadimos un punto y coma antes del siguiente usuario
+			if (strlen(usuarios) > 0)
+			{
+				strcat(usuarios, "|");
+			}
+
+			// Añadir el usuario a la cadena
+			strcat(usuarios, usuario);			
+		}
+		//Almacenar la cadena en el buffer por argumento
+		strcpy(usuario, usuarios);
+
+		// Cerrar el pipe
+		fclose(fp);
+	}
+	else
+	{
+		// Recoger datos de un usuario en específico
+	}
 }
