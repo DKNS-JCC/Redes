@@ -80,7 +80,6 @@ int main(int argc, char *argv[])
 	}
 	else if (argc == 3)
 	{
-		printf("ARGUMENTOS SON 3\n");
 
 		char *at_position = strchr(argv[2], '@');
 		if (at_position)
@@ -245,13 +244,25 @@ void funcionTCP(char usuario[], char host[])
 	printf("TCP_Client Connected to %s on port %u at %s",
 		   host, ntohs(myaddr_in.sin_port), (char *)ctime(&timevar));
 
-	for (i = 1; i <= 5; i++)
+	if (usuario != "null")
 	{
-		*buf = i;
-		if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+		strcat(usuario, "\r\n");
+		/* Send the request to the server followed by \r\n */
+		if (send(s, usuario, strlen(usuario), 0) == -1)
 		{
-			fprintf(stderr, "%s: Connection aborted on error ", "clientTCP");
-			fprintf(stderr, "on send number %d\n", i);
+			perror("clientTCP");
+			fprintf(stderr, "%s: unable to send request\n", "clientTCP");
+			exit(1);
+		}
+		
+	}
+	else 
+	{
+		char clrf [] = "\r\n";
+		if (send(s, clrf, strlen(clrf), 0) == -1)
+		{
+			perror("clientTCP");
+			fprintf(stderr, "%s: unable to send request\n", "clientTCP");
 			exit(1);
 		}
 	}
@@ -421,60 +432,50 @@ void funcionUDP(char usuario[], char host[])
 
 	n_retry = RETRIES;
 
-	while (n_retry > 0)
-	{
-		/* Send the request to the nameserver. */
-		if (sendto(s, host, strlen(host), 0, (struct sockaddr *)&servaddr_in,
-				   sizeof(struct sockaddr_in)) == -1)
-		{
-			perror("clientUDP");
-			fprintf(stderr, "%s: unable to send request\n", "clientUDP");
-			exit(1);
-		}
-		/* Set up a timeout so I don't hang in case the packet
-		 * gets lost.  After all, UDP does not guarantee
-		 * delivery.
-		 */
-		alarm(TIMEOUT);
-		/* Wait for the reply to come in. */
-		if (recvfrom(s, &reqaddr, sizeof(struct in_addr), 0,
-					 (struct sockaddr *)&servaddr_in, &addrlen) == -1)
-		{
-			if (errno == EINTR)
-			{
-				/* Alarm went off and aborted the receive.
-				 * Need to retry the request if we have
-				 * not already exceeded the retry limit.
-				 */
-				printf("attempt %d (retries %d).\n", n_retry, RETRIES);
-				n_retry--;
-			}
-			else
-			{
-				printf("Unable to get response from");
-				exit(1);
-			}
-		}
-		else
-		{
-			alarm(0);
-			/* Print out response. */
-			if (reqaddr.s_addr == ADDRNOTFOUND)
-				printf("Host %s unknown by nameserver %s\n", host, host);
-			else
-			{
-				/* inet_ntop para interoperatividad con IPv6 */
-				if (inet_ntop(AF_INET, &reqaddr, hostname, MAXHOST) == NULL)
-					perror(" inet_ntop \n");
-				printf("Address for %s is %s\n", host, hostname);
-			}
-			break;
-		}
-	}
+	while (n_retry > 0) {
+        // Agregar salto de línea al mensaje
+        strcat(usuario, "\r\n");
 
-	if (n_retry == 0)
-	{
-		printf("Unable to get response from");
-		printf(" %s after %d attempts.\n", host, RETRIES);
-	}
+        // Enviar el mensaje al servidor
+        if (sendto(s, usuario, strlen(usuario), 0, (struct sockaddr *)&servaddr_in, sizeof(servaddr_in)) == -1) {
+            perror("clientUDP");
+            close(s);
+            exit(1);
+        }
+
+        // Configurar temporizador para evitar bloqueo
+        alarm(TIMEOUT);
+
+        // Esperar respuesta
+        if (recvfrom(s, &reqaddr, sizeof(struct in_addr), 0, (struct sockaddr *)&servaddr_in, &addrlen) == -1) {
+            if (errno == EINTR) {  // Timeout ocurrió
+                printf("Intento %d fallido, reintentando...\n", RETRIES - n_retry + 1);
+                n_retry--;
+            } else {
+                perror("Error en recvfrom");
+                close(s);
+                exit(1);
+            }
+        } else {
+            alarm(0);  // Cancelar la alarma
+            if (reqaddr.s_addr == ADDRNOTFOUND) {
+                printf("Host %s desconocido.\n", host);
+            } else {
+                // Mostrar la respuesta
+                if (inet_ntop(AF_INET, &reqaddr, hostname, MAXHOST) == NULL) {
+                    perror("inet_ntop");
+                } else {
+                    printf("Dirección de %s: %s\n", host, hostname);
+                }
+            }
+            break;
+        }
+    }
+
+    // Si se agotaron los intentos
+    if (n_retry == 0) {
+        printf("No se pudo obtener respuesta después de %d intentos.\n", RETRIES);
+    }
+
+    close(s);
 }
