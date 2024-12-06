@@ -20,7 +20,7 @@
 
 
 
-#define PUERTO 17278
+#define PUERTO 13131
 #define ADDRNOTFOUND	0xffffffff	/* return address for unfound host */
 #define BUFFERSIZE	1024	/* maximum size of packets to be received */
 #define TAM_BUFFER 10
@@ -197,7 +197,7 @@ char *argv[];
                     FIN=1;
 		            close (ls_TCP);
 		            close (s_UDP);
-                    perror("\nFinalizando el servidor. SeÃal recibida en elect\n "); 
+                    perror("\nFinalizando el servidor. Seï¿½al recibida en elect\n "); 
                 }
             }
            else { 
@@ -261,7 +261,7 @@ char *argv[];
                 serverUDP (s_UDP, buffer, clientaddr_in);
                 }
           }
-		}   /* Fin del bucle infinito de atención a clientes */
+		}   /* Fin del bucle infinito de atenciï¿½n a clientes */
         /* Cerramos los sockets UDP y TCP */
         close(ls_TCP);
         close(s_UDP);
@@ -437,7 +437,7 @@ void serverUDP(int s, char * buffer, struct sockaddr_in clientaddr_in)
       memset (&hints, 0, sizeof (hints));
       hints.ai_family = AF_INET;
 		/* Treat the message as a string containing a hostname. */
-	    /* Esta función es la recomendada para la compatibilidad con IPv6 gethostbyname queda obsoleta. */
+	    /* Esta funciï¿½n es la recomendada para la compatibilidad con IPv6 gethostbyname queda obsoleta. */
     errcode = getaddrinfo (buffer, NULL, &hints, &res); 
     if (errcode != 0){
 		/* Name was not found.  Return a

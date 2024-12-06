@@ -25,7 +25,7 @@
 #include <signal.h>
 
 #define PUERTO 13131
-#define TAM_BUFFER 512
+#define TAM_BUFFER 12
 
 extern int errno;
 
