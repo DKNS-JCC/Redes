@@ -36,6 +36,17 @@ extern int errno;
  *
  */
 
+//Declarar struct de usuario
+typedef struct usuario
+{
+	char nombre[50];
+	char usuario[50];
+	char directorio[50];
+	char terminal[50];
+	char lastlogin[50];
+	char mail[50];
+}campo;
+
 void serverTCP(int s, struct sockaddr_in peeraddr_in);
 void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in);
 void errout(char *); /* declare error out routine */
@@ -478,7 +489,8 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 	printf("Mensaje recibido de %s:%d\n", client_ip, ntohs(clientaddr_in.sin_port));
 	printf("Datos recibidos (%zd bytes): %s\n", received_len, buffer);
 
-	recogerDatos(buffer);
+	campo usuarios [1000];
+	recogerDatos(buffer, usuarios);
 	printf ("Datos recogidos: %s\n", buffer);
 
 
@@ -508,15 +520,15 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 	printf("Respuesta enviada al cliente.\n");
 }
 
-void recogerDatos(char *usuario)
+void recogerDatos(char *usuario, campo *usuarios)
 {
+	
 	if (strcmp(usuario, "null") == 0)
 	{
 		// Recoger datos de todos los usuarios
 		// Formato de respuesta -> usuario1|usuario2|usuario3|...
 		FILE *fp;
 		char line[256];
-		char usuarios[1024] = ""; // Buffer para almacenar la cadena final
 
 		// Ejecutamos el comando `w` y obtenemos la salida
 		fp = popen("w", "r");
@@ -535,7 +547,7 @@ void recogerDatos(char *usuario)
 			{
 				continue;
 			}
-			char usuario[64];
+			char usuario[50];
 			sscanf(line, "%s", usuario);
 
 			// Si la cadena no está vacía, añadimos un punto y coma antes del siguiente usuario
