@@ -17,12 +17,16 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <pwd.h>
+#include <utmp.h>
 
 #define PUERTO 13131
 #define ADDRNOTFOUND 0xffffffff /* return address for unfound host */
 #define BUFFERSIZE 1024			/* maximum size of packets to be received */
-#define TAM_BUFFER 512
+#define TAM_BUFFER 516
 #define MAXHOST 128
+#define MAX_USERS 200
+#define MAX_STRING_LENGTH 516
 
 extern int errno;
 
@@ -36,24 +40,13 @@ extern int errno;
  *
  */
 
-//Declarar struct de usuario
-typedef struct usuario
-{
-	char nombre[50];
-	char usuario[50];
-	char directorio[50];
-	char terminal[50];
-	char lastlogin[50];
-	char mail[50];
-}campo;
-
+// Declarar struct de usuario
 void serverTCP(int s, struct sockaddr_in peeraddr_in);
 void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in);
 void errout(char *); /* declare error out routine */
 
 int FIN = 0; /* Para el cierre ordenado */
 void finalizar() { FIN = 1; }
-void recogerDatos(char *usuario);
 
 int main(argc, argv)
 int argc;
@@ -466,6 +459,8 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 	struct in_addr reqaddr; /* Para la dirección solicitada */
 	int nc, errcode;
 	socklen_t addrlen = sizeof(clientaddr_in);
+	int num_usuarios;
+	char usuarios[MAX_USERS][MAX_STRING_LENGTH];
 
 	printf("Esperando datos UDP...\n");
 
@@ -489,10 +484,16 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 	printf("Mensaje recibido de %s:%d\n", client_ip, ntohs(clientaddr_in.sin_port));
 	printf("Datos recibidos (%zd bytes): %s\n", received_len, buffer);
 
-	campo usuarios [1000];
-	recogerDatos(buffer, usuarios);
-	printf ("Datos recogidos: %s\n", buffer);
+	char usuario[50];
+	strncpy(usuario, buffer, 50);
+	
+	obtener_usuarios(usuarios, &num_usuarios, usuario);
 
+	//impresion de los usuarios
+	for (int i = 0; i < num_usuarios; i++)
+	{
+		printf("%s", usuarios[i]);
+	}
 
 	// Resolver el nombre recibido (si aplica)
 	struct addrinfo hints, *res;
@@ -520,53 +521,134 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 	printf("Respuesta enviada al cliente.\n");
 }
 
-void recogerDatos(char *usuario, campo *usuarios)
+// Función para leer archivos de usuario (.plan y .project)
+void leer_archivo_usuario(const char *home, const char *filename, char *buffer, size_t len)
 {
-	
-	if (strcmp(usuario, "null") == 0)
+	char filepath[256];
+	snprintf(filepath, sizeof(filepath), "%s/%s", home, filename);
+
+	int fd = open(filepath,0);
+	if (fd < 0)
 	{
-		// Recoger datos de todos los usuarios
-		// Formato de respuesta -> usuario1|usuario2|usuario3|...
-		FILE *fp;
-		char line[256];
+		strncpy(buffer, "N/A", len);
+		return;
+	}
 
-		// Ejecutamos el comando `w` y obtenemos la salida
-		fp = popen("w", "r");
-		if (fp == NULL)
-		{
-			perror("No se pudo ejecutar el comando who");
-		}
-
-		int i = 0;
-		// Leer cada línea de la salida de `who`
-		while (fgets(line, sizeof(line), fp))
-		{
-			i++;
-			// Extraemos el nombre de usuario (la primera palabra de cada línea, obviando las dos primeras lineas)
-			if (i <= 2)
-			{
-				continue;
-			}
-			char usuario[50];
-			sscanf(line, "%s", usuario);
-
-			// Si la cadena no está vacía, añadimos un punto y coma antes del siguiente usuario
-			if (strlen(usuarios) > 0)
-			{
-				strcat(usuarios, "|");
-			}
-
-			// Añadir el usuario a la cadena
-			strcat(usuarios, usuario);			
-		}
-		//Almacenar la cadena en el buffer por argumento
-		strcpy(usuario, usuarios);
-
-		// Cerrar el pipe
-		fclose(fp);
+	ssize_t bytes_read = read(fd, buffer, len - 1);
+	if (bytes_read > 0)
+	{
+		buffer[bytes_read] = '\0';
 	}
 	else
 	{
-		// Recoger datos de un usuario en específico
+		strncpy(buffer, "N/A", len);
 	}
+	close(fd);
+}
+
+// Función para obtener la información de los usuarios
+void obtener_usuarios(char usuarios[MAX_USERS][MAX_STRING_LENGTH], int *num_usuarios, char *usuario)
+{
+	struct passwd *pwd;
+	struct utmp *ut;
+	FILE *utmp_file;
+	char terminal[50] = "N/A";
+	char login_time[50] = "N/A";
+	char where[50] = "N/A";
+	char plan[256] = "N/A";
+	char project[256] = "N/A";
+	char buffer[MAX_STRING_LENGTH];
+	char buffer_parcial[MAX_STRING_LENGTH];
+
+	utmp_file = fopen(_PATH_UTMP, "r");
+	if (!utmp_file)
+	{
+		perror("Error abriendo /var/run/utmp");
+		exit(EXIT_FAILURE);
+	}
+
+	*num_usuarios = 0;
+	memset(usuarios, 0, sizeof(char) * MAX_USERS * MAX_STRING_LENGTH);
+
+	while ((pwd = getpwent()) != NULL)
+	{
+		strcpy(terminal, "N/A");
+		strcpy(login_time, "N/A");
+		strcpy(where, "N/A");
+		strcpy(plan, "N/A");
+		strcpy(project, "N/A");
+
+		setutent();
+		while ((ut = getutent()) != NULL)
+		{
+			if (ut->ut_type == USER_PROCESS && strcmp(ut->ut_user, pwd->pw_name) == 0)
+			{
+				snprintf(terminal, sizeof(terminal), "%s", ut->ut_line);
+				snprintf(where, sizeof(where), "%s", ut->ut_host);
+				strftime(login_time, sizeof(login_time), "%Y-%m-%d %H:%M:%S", localtime(&ut->ut_tv.tv_sec));
+				break;
+			}
+		}
+		endutent();
+
+		if (strcmp(login_time, "N/A") == 0)
+		{
+			continue;
+		}
+
+		int i = 0;
+		char *NAME[100];
+		char *LOGIN[100];
+		strcpy(NAME, pwd->pw_gecos);
+		strcpy(LOGIN, usuario);
+
+		char* NAME2 = strtok(NAME, " ");
+		char* LOGIN2 = strtok(LOGIN, " ");
+
+		for (i = 0; i < strlen(NAME2); i++)
+		{
+			NAME2[i] = tolower(NAME2[i]);
+		}
+		for (i = 0; i <= strlen(LOGIN2); i++)
+		{
+			LOGIN2[i] = tolower(LOGIN2[i]);
+		}
+		if ((strcmp(NAME2, LOGIN2) != 0) && (strcasecmp(usuario, "null") != 0))
+        {
+            continue;
+        }
+
+		leer_archivo_usuario(pwd->pw_dir, ".plan", plan, sizeof(plan));
+		leer_archivo_usuario(pwd->pw_dir, ".project", project, sizeof(project));
+
+		snprintf(buffer, MAX_STRING_LENGTH,
+				 "%s;%s;%s;%s;%s",
+				 pwd->pw_name, pwd->pw_gecos, terminal, login_time, where);
+
+		snprintf(buffer_parcial, sizeof(buffer_parcial),
+				 "%s;%s;%s;%s-\r\n",
+				 pwd->pw_dir, pwd->pw_shell, plan, project);
+
+		// Copiar buffer y buffer_parcial en líneas consecutivas del array
+		if (*num_usuarios + 1 < MAX_USERS)
+		{
+			strncpy(usuarios[*num_usuarios], buffer, MAX_STRING_LENGTH - 1);
+			usuarios[*num_usuarios][MAX_STRING_LENGTH - 1] = '\0'; // Asegurar terminación
+			(*num_usuarios)++;
+
+			strncpy(usuarios[*num_usuarios], buffer_parcial, MAX_STRING_LENGTH - 1);
+			usuarios[*num_usuarios][MAX_STRING_LENGTH - 1] = '\0'; // Asegurar terminación
+			(*num_usuarios)++;
+		}
+		else
+		{
+			fprintf(stderr, "Error: Número máximo de usuarios excedido.\n");
+			break;
+		}
+	}
+
+	fclose(utmp_file);
+	endpwent();
+
+
 }
