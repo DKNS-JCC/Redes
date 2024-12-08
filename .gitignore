@@ -1,7 +1,7 @@
-clientcp
 servidor
-clientudp
+client
+test
+test.c
 *.o
 *.h
-
-
+*.log

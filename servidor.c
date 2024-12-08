@@ -486,14 +486,29 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 
 	char usuario[50];
 	strncpy(usuario, buffer, 50);
-	
+
 	obtener_usuarios(usuarios, &num_usuarios, usuario);
 
-	//impresion de los usuarios
+	// impresion de los usuarios
 	for (int i = 0; i < num_usuarios; i++)
 	{
-		printf("%s", usuarios[i]);
+		printf("%d: %s", i, usuarios[i]);
 	}
+
+	// Registrar en el archivo de log
+	char descripcion[128];
+	snprintf(descripcion, sizeof(descripcion), "Petición recibida por UDP del cliente %s:%d", client_ip, ntohs(clientaddr_in.sin_port));
+
+	registrar_evento("Comunicación iniciada", "Cliente", client_ip, "UDP", ntohs(clientaddr_in.sin_port), NULL, NULL);
+	registrar_evento("Orden recibida", "Cliente", client_ip, "UDP", ntohs(clientaddr_in.sin_port), buffer, NULL);
+
+	char respuesta[512] = "Usuarios encontrados:\n";
+	for (int i = 0; i < num_usuarios; i++)
+	{
+		strncat(respuesta, usuarios[i], sizeof(respuesta) - strlen(respuesta) - 1);
+		strncat(respuesta, "\n", sizeof(respuesta) - strlen(respuesta) - 1);
+	}
+	registrar_evento("Respuesta enviada", "Cliente", client_ip, "UDP", ntohs(clientaddr_in.sin_port), NULL, respuesta);
 
 	// Resolver el nombre recibido (si aplica)
 	struct addrinfo hints, *res;
@@ -527,7 +542,7 @@ void leer_archivo_usuario(const char *home, const char *filename, char *buffer, 
 	char filepath[256];
 	snprintf(filepath, sizeof(filepath), "%s/%s", home, filename);
 
-	int fd = open(filepath,0);
+	int fd = open(filepath, 0);
 	if (fd < 0)
 	{
 		strncpy(buffer, "N/A", len);
@@ -544,6 +559,36 @@ void leer_archivo_usuario(const char *home, const char *filename, char *buffer, 
 		strncpy(buffer, "N/A", len);
 	}
 	close(fd);
+}
+
+void registrar_evento(const char *descripcion, const char *host, const char *ip, const char *protocolo, int puerto, const char *orden, const char *respuesta)
+{
+	FILE *log_file = fopen("registro.log", "a"); // Modo de edición
+	if (!log_file)
+	{
+		perror("Error al abrir el archivo de log");
+		return;
+	}
+
+	// Obtener fecha y hora actuales 
+	time_t now = time(NULL);
+	char fecha_hora[50];
+	strftime(fecha_hora, sizeof(fecha_hora), "%Y-%m-%d %H:%M:%S", localtime(&now)); // Formato: YYYY-MM-DD HH:MM:SS
+
+	fprintf(log_file, "Fecha y hora: %s\n", fecha_hora);
+	fprintf(log_file, "Descripción: %s\n", descripcion);
+	fprintf(log_file, "Comunicación realizada: Host=%s, IP=%s, Protocolo=%s, Puerto=%d\n", host, ip, protocolo, puerto);
+	if (orden)
+	{
+		fprintf(log_file, "Orden recibida: %s\n", orden);
+	}
+	if (respuesta)
+	{
+		fprintf(log_file, "Respuesta enviada: %s", respuesta);
+	}
+	fprintf(log_file, "\n----------------------------------------\n");
+
+	fclose(log_file);
 }
 
 // Función para obtener la información de los usuarios
@@ -602,8 +647,8 @@ void obtener_usuarios(char usuarios[MAX_USERS][MAX_STRING_LENGTH], int *num_usua
 		strcpy(NAME, pwd->pw_gecos);
 		strcpy(LOGIN, usuario);
 
-		char* NAME2 = strtok(NAME, " ");
-		char* LOGIN2 = strtok(LOGIN, " ");
+		char *NAME2 = strtok(NAME, " ");
+		char *LOGIN2 = strtok(LOGIN, " ");
 
 		for (i = 0; i < strlen(NAME2); i++)
 		{
@@ -614,9 +659,9 @@ void obtener_usuarios(char usuarios[MAX_USERS][MAX_STRING_LENGTH], int *num_usua
 			LOGIN2[i] = tolower(LOGIN2[i]);
 		}
 		if ((strcmp(NAME2, LOGIN2) != 0) && (strcasecmp(usuario, "null") != 0))
-        {
-            continue;
-        }
+		{
+			continue;
+		}
 
 		leer_archivo_usuario(pwd->pw_dir, ".plan", plan, sizeof(plan));
 		leer_archivo_usuario(pwd->pw_dir, ".project", project, sizeof(project));
@@ -649,6 +694,4 @@ void obtener_usuarios(char usuarios[MAX_USERS][MAX_STRING_LENGTH], int *num_usua
 
 	fclose(utmp_file);
 	endpwent();
-
-
 }
