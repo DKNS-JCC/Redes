@@ -1,4 +1,4 @@
-/*
+ /*
  *			C L I E N T C P
  *
  *	This is an example program that demonstrates the use of
@@ -346,6 +346,7 @@ void funcionUDP(char usuario[], char host[])
 	struct sigaction vec;
 	char hostname[MAXHOST];
 	struct addrinfo hints, *res;
+	char buffer[BUFFERSIZE];
 
 	/* Create the socket. */
 	s = socket(AF_INET, SOCK_DGRAM, 0);
@@ -432,7 +433,7 @@ void funcionUDP(char usuario[], char host[])
 
 	n_retry = RETRIES;
 
-	while (n_retry > 0) {
+	
 
         // Enviar el mensaje al servidor
         if (sendto(s, usuario, strlen(usuario), 0, (struct sockaddr *)&servaddr_in, sizeof(servaddr_in)) == -1) {
@@ -445,7 +446,11 @@ void funcionUDP(char usuario[], char host[])
         alarm(TIMEOUT);
 
         // Esperar respuesta
-        if (recvfrom(s, &reqaddr, sizeof(struct in_addr), 0, (struct sockaddr *)&servaddr_in, &addrlen) == -1) {
+		//campos de recvfrom: socket, mensaje, longitud del mensaje, flags, dirección del cliente, longitud de la dirección
+
+
+	while (n_retry > 0) {	
+        if (recvfrom(s, &buffer, BUFFERSIZE - 1, 0, (struct sockaddr *)&servaddr_in, &addrlen) == -1) {
             if (errno == EINTR) {  // Timeout ocurrió
                 printf("Intento %d fallido, reintentando...\n", RETRIES - n_retry + 1);
                 n_retry--;
@@ -456,18 +461,21 @@ void funcionUDP(char usuario[], char host[])
             }
         } else {
             alarm(0);  // Cancelar la alarma
+			n_retry = RETRIES;
             if (reqaddr.s_addr == ADDRNOTFOUND) {
                 printf("Host %s desconocido.\n", host);
             } else {
                 // Mostrar la respuesta
-                if (inet_ntop(AF_INET, &reqaddr, hostname, MAXHOST) == NULL) {
-                    perror("inet_ntop");
-                } else {
-                    printf("Dirección de %s: %s\n", host, hostname);
-                }
-            }
-            break;
-        }
+			buffer[BUFFERSIZE - 1] = '\0';
+            printf("la respuesta del servidor ha sido: %s\n", &buffer);
+            
+			if(strcmp(buffer, "FINALIZAR") == 0){
+				printf("Finalizando el cliente\n");
+				break;
+			}
+        	}
+            
+    	}
     }
 
     // Si se agotaron los intentos

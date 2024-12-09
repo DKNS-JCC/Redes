@@ -457,7 +457,7 @@ void errout(char *hostname)
 void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 {
 	struct in_addr reqaddr; /* Para la dirección solicitada */
-	int nc, errcode;
+	int nc,errcode;
 	socklen_t addrlen = sizeof(clientaddr_in);
 	int num_usuarios;
 	char usuarios[MAX_USERS][MAX_STRING_LENGTH];
@@ -525,13 +525,26 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 	}
 	*/
 	// Enviar la dirección resuelta al cliente
-	nc = sendto(s, &reqaddr, sizeof(struct in_addr), 0, (struct sockaddr *)&clientaddr_in, addrlen);
-	if (nc == -1)
-	{
-		perror("Error al enviar respuesta");
-		printf("No se pudo enviar la respuesta al cliente.\n");
-		return;
+
+	//campos de sendto: socket, mensaje, longitud del mensaje, flags, dirección del cliente, longitud de la dirección
+
+	int i = 0;
+	int j = 0;
+	printf ("numUsuarios: %d\n", num_usuarios);	
+	while(i < num_usuarios){
+
+			nc = sendto(s, usuarios[i], strlen(usuarios[i]), 0, (struct sockaddr *)&clientaddr_in, addrlen);
+			if (nc == -1)
+			{
+				perror("Error al enviar respuesta");
+				printf("No se pudo enviar la respuesta al cliente.\n");
+				return;
+			}
+		i++;
 	}
+	nc = sendto(s, "FINALIZAR", 3, 0, (struct sockaddr *)&clientaddr_in, addrlen);
+
+	
 
 	printf("Respuesta enviada al cliente.\n");
 }
@@ -603,7 +616,6 @@ void obtener_usuarios(char usuarios[MAX_USERS][MAX_STRING_LENGTH], int *num_usua
 	char plan[256] = "N/A";
 	char project[256] = "N/A";
 	char buffer[MAX_STRING_LENGTH];
-	char buffer_parcial[MAX_STRING_LENGTH];
 
 	utmp_file = fopen(_PATH_UTMP, "r");
 	if (!utmp_file)
@@ -667,12 +679,9 @@ void obtener_usuarios(char usuarios[MAX_USERS][MAX_STRING_LENGTH], int *num_usua
 		leer_archivo_usuario(pwd->pw_dir, ".project", project, sizeof(project));
 
 		snprintf(buffer, MAX_STRING_LENGTH,
-				 "%s;%s;%s;%s;%s",
-				 pwd->pw_name, pwd->pw_gecos, terminal, login_time, where);
+				 "%s;%s;%s;%s;%s;%s;%s;%s;%s-\r\n",
+				 pwd->pw_name, pwd->pw_gecos, terminal, login_time, where,pwd->pw_dir, pwd->pw_shell, plan, project);
 
-		snprintf(buffer_parcial, sizeof(buffer_parcial),
-				 "%s;%s;%s;%s-\r\n",
-				 pwd->pw_dir, pwd->pw_shell, plan, project);
 
 		// Copiar buffer y buffer_parcial en líneas consecutivas del array
 		if (*num_usuarios + 1 < MAX_USERS)
@@ -681,9 +690,6 @@ void obtener_usuarios(char usuarios[MAX_USERS][MAX_STRING_LENGTH], int *num_usua
 			usuarios[*num_usuarios][MAX_STRING_LENGTH - 1] = '\0'; // Asegurar terminación
 			(*num_usuarios)++;
 
-			strncpy(usuarios[*num_usuarios], buffer_parcial, MAX_STRING_LENGTH - 1);
-			usuarios[*num_usuarios][MAX_STRING_LENGTH - 1] = '\0'; // Asegurar terminación
-			(*num_usuarios)++;
 		}
 		else
 		{
