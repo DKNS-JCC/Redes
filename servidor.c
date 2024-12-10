@@ -44,7 +44,7 @@ extern int errno;
 void serverTCP(int s, struct sockaddr_in peeraddr_in);
 void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in);
 void errout(char *); /* declare error out routine */
-
+int i = 0;
 int FIN = 0; /* Para el cierre ordenado */
 void finalizar() { FIN = 1; }
 
@@ -528,11 +528,10 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 
 	//campos de sendto: socket, mensaje, longitud del mensaje, flags, dirección del cliente, longitud de la dirección
 
-	int i = 0;
-	int j = 0;
+	
 	printf ("numUsuarios: %d\n", num_usuarios);	
 	while(i < num_usuarios){
-
+			i++;
 			nc = sendto(s, usuarios[i], strlen(usuarios[i]), 0, (struct sockaddr *)&clientaddr_in, addrlen);
 			if (nc == -1)
 			{
@@ -540,9 +539,8 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 				printf("No se pudo enviar la respuesta al cliente.\n");
 				return;
 			}
-		i++;
 	}
-	nc = sendto(s, "FINALIZAR", 3, 0, (struct sockaddr *)&clientaddr_in, addrlen);
+	nc = sendto(s, "FINALIZAR", 9, 0, (struct sockaddr *)&clientaddr_in, addrlen);
 
 	
 

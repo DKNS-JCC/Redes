@@ -434,7 +434,7 @@ void funcionUDP(char usuario[], char host[])
 	n_retry = RETRIES;
 
 	
-
+while (n_retry > 0) {
         // Enviar el mensaje al servidor
         if (sendto(s, usuario, strlen(usuario), 0, (struct sockaddr *)&servaddr_in, sizeof(servaddr_in)) == -1) {
             perror("clientUDP");
@@ -449,7 +449,7 @@ void funcionUDP(char usuario[], char host[])
 		//campos de recvfrom: socket, mensaje, longitud del mensaje, flags, dirección del cliente, longitud de la dirección
 
 
-	while (n_retry > 0) {	
+	
         if (recvfrom(s, &buffer, BUFFERSIZE - 1, 0, (struct sockaddr *)&servaddr_in, &addrlen) == -1) {
             if (errno == EINTR) {  // Timeout ocurrió
                 printf("Intento %d fallido, reintentando...\n", RETRIES - n_retry + 1);
@@ -467,7 +467,7 @@ void funcionUDP(char usuario[], char host[])
             } else {
                 // Mostrar la respuesta
 			buffer[BUFFERSIZE - 1] = '\0';
-            printf("la respuesta del servidor ha sido: %s\n", &buffer);
+            printf("la respuesta del servidor ha sido: %s\n", buffer);
             
 			if(strcmp(buffer, "FINALIZAR") == 0){
 				printf("Finalizando el cliente\n");
