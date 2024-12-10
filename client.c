@@ -347,6 +347,9 @@ void funcionUDP(char usuario[], char host[])
 	char hostname[MAXHOST];
 	struct addrinfo hints, *res;
 	char buffer[BUFFERSIZE];
+	int num_usuarios = -1;
+	char num_usuarios_string[10];
+	int j = 0;
 
 	/* Create the socket. */
 	s = socket(AF_INET, SOCK_DGRAM, 0);
@@ -447,35 +450,54 @@ while (n_retry > 0) {
 
         // Esperar respuesta
 		//campos de recvfrom: socket, mensaje, longitud del mensaje, flags, dirección del cliente, longitud de la dirección
-
-
-	
-        if (recvfrom(s, &buffer, BUFFERSIZE - 1, 0, (struct sockaddr *)&servaddr_in, &addrlen) == -1) {
-            if (errno == EINTR) {  // Timeout ocurrió
-                printf("Intento %d fallido, reintentando...\n", RETRIES - n_retry + 1);
-                n_retry--;
-            } else {
-                perror("Error en recvfrom");
-                close(s);
-                exit(1);
-            }
-        } else {
-            alarm(0);  // Cancelar la alarma
-			n_retry = RETRIES;
-            if (reqaddr.s_addr == ADDRNOTFOUND) {
-                printf("Host %s desconocido.\n", host);
-            } else {
-                // Mostrar la respuesta
-			buffer[BUFFERSIZE - 1] = '\0';
-            printf("la respuesta del servidor ha sido: %s\n", buffer);
-            
-			if(strcmp(buffer, "FINALIZAR") == 0){
-				printf("Finalizando el cliente\n");
-				break;
+		if(num_usuarios == -1){
+		 	if (recvfrom(s, &num_usuarios_string,sizeof(num_usuarios_string), 0, (struct sockaddr *)&servaddr_in, &addrlen) == -1) {
+				if (errno == EINTR) {  // Timeout ocurrió
+					printf("Intento %d fallido, reintentando...\n", RETRIES - n_retry + 1);
+					n_retry--;
+				} else {
+					perror("Error en recvfrom");
+					close(s);
+					exit(1);
+				}
+			} else {
+				num_usuarios = atoi(num_usuarios_string);
+				alarm(0);  // Cancelar la alarma
+				n_retry = RETRIES;
+				printf("Usuarios encontrados recibidos en cliente: %d\n", num_usuarios);
 			}
-        	}
-            
-    	}
+		}
+
+		if(num_usuarios != -1){
+			printf("me he metido en el if distinto de -1\n");
+			 alarm(TIMEOUT);
+			while(j < num_usuarios){
+				printf("me he metido en el while de usuarios\n");
+				memset(buffer, 0, BUFFERSIZE);
+				printf("voy a recibir\n");
+				if (recvfrom(s, &buffer, BUFFERSIZE - 1, 0, (struct sockaddr *)&servaddr_in, &addrlen) == -1) {
+					if (errno == EINTR) {  // Timeout ocurrió
+						printf("Intento %d fallido, reintentando...\n", RETRIES - n_retry + 1);
+						n_retry--;
+					} else {
+						perror("Error en recvfrom");
+						close(s);
+						exit(1);
+					}
+				} else {
+					alarm(0);  // Cancelar la alarma
+					n_retry = RETRIES;
+					buffer[BUFFERSIZE - 1] = '\0';
+					printf("Usuario %d: %s\n", j, buffer);
+					
+					j++;
+				}
+			}
+			if(j == num_usuarios){
+				break;
+			}	
+		}
+		
     }
 
     // Si se agotaron los intentos
@@ -484,4 +506,31 @@ while (n_retry > 0) {
     }
 
     close(s);
+}
+
+void formatear_cadena(const char cadena) {
+    char buffer[516];
+    char * tokens[10];
+    int i = 0;
+
+
+    strncpy(buffer, cadena, sizeof(buffer));
+    buffer[sizeof(buffer) - 1] = '\0';
+
+
+    char *token = strtok(buffer, ";");
+    while (token != NULL && i < 10) {
+        tokens[i++] = token;
+        token = strtok(NULL, ";");
+    }
+
+    if (i < 9) {
+        fprintf(stderr, "La cadena no tiene el formato esperado.\n");
+        return;
+    }
+
+    printf("Login: %s\t\tName: %s\n", tokens[0], tokens[1]);
+    printf("Directory: %s\tShell: %s\n", tokens[5], tokens[6]);
+    printf("Office: %s\t\tHome Phone: %s\n", tokens[2], tokens[7]);
+    printf("On since %s on %s\t%s\n", tokens[3], tokens[2], tokens[8]);
 }

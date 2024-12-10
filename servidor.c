@@ -20,6 +20,7 @@
 #include <pwd.h>
 #include <utmp.h>
 
+
 #define PUERTO 13131
 #define ADDRNOTFOUND 0xffffffff /* return address for unfound host */
 #define BUFFERSIZE 1024			/* maximum size of packets to be received */
@@ -461,6 +462,7 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 	socklen_t addrlen = sizeof(clientaddr_in);
 	int num_usuarios;
 	char usuarios[MAX_USERS][MAX_STRING_LENGTH];
+	char num_usuarios_string[10];
 
 	printf("Esperando datos UDP...\n");
 
@@ -489,11 +491,6 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 
 	obtener_usuarios(usuarios, &num_usuarios, usuario);
 
-	// impresion de los usuarios
-	for (int i = 0; i < num_usuarios; i++)
-	{
-		printf("%d: %s", i, usuarios[i]);
-	}
 
 	// Registrar en el archivo de log
 	char descripcion[128];
@@ -530,18 +527,28 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 
 	
 	printf ("numUsuarios: %d\n", num_usuarios);	
+	
+	snprintf(num_usuarios_string, sizeof(num_usuarios_string), "%d", num_usuarios);
+	nc = sendto(s, num_usuarios_string, sizeof(num_usuarios_string), 0, (struct sockaddr *)&clientaddr_in, addrlen);
+	if (nc == -1)
+			{
+				//p
+				perror("Error al enviar respuesta");
+				printf("No se pudo enviar la respuesta al cliente con el numero de usuarios.\n");
+				return;
+			}
+
 	while(i < num_usuarios){
 			
 			nc = sendto(s, usuarios[i], strlen(usuarios[i]), 0, (struct sockaddr *)&clientaddr_in, addrlen);
 			if (nc == -1)
 			{
 				perror("Error al enviar respuesta");
-				printf("No se pudo enviar la respuesta al cliente.\n");
+				printf("No se pudo enviar la respuesta al cliente con cada usuario.\n");
 				return;
 			}
 			i++;
 	}
-	nc = sendto(s, "FINALIZAR", 9, 0, (struct sockaddr *)&clientaddr_in, addrlen);
 
 	
 
