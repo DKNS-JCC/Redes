@@ -531,7 +531,7 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 	
 	printf ("numUsuarios: %d\n", num_usuarios);	
 	while(i < num_usuarios){
-			i++;
+			
 			nc = sendto(s, usuarios[i], strlen(usuarios[i]), 0, (struct sockaddr *)&clientaddr_in, addrlen);
 			if (nc == -1)
 			{
@@ -539,6 +539,7 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 				printf("No se pudo enviar la respuesta al cliente.\n");
 				return;
 			}
+			i++;
 	}
 	nc = sendto(s, "FINALIZAR", 9, 0, (struct sockaddr *)&clientaddr_in, addrlen);
 
