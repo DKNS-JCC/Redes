@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <pwd.h>
 #include <utmp.h>
+#include <sys/stat.h>
 
 #define PUERTO 13131
 #define ADDRNOTFOUND 0xffffffff /* return address for unfound host */
@@ -644,8 +645,10 @@ void obtener_usuarios(char usuarios[MAX_USERS][MAX_STRING_LENGTH], int *num_usua
 	char plan[256] = "N/A";
 	char project[256] = "N/A";
 	char buffer[516];
+	char mail_status[50] = "No mail.";
+    char messages_status[50] = "messages off";
+    char idle_time[50] = "N/A";
 
-	sleep(1);
 	utmp_file = fopen("/var/run/utmp", "r");
 	if (!utmp_file)
 	{
@@ -665,21 +668,33 @@ void obtener_usuarios(char usuarios[MAX_USERS][MAX_STRING_LENGTH], int *num_usua
 		strcpy(project, "N/A");
 
 		setutent();
-		while ((ut = getutent()) != NULL)
-		{
-			if (ut->ut_type == USER_PROCESS && strcmp(ut->ut_user, pwd->pw_name) == 0)
-			{
-				snprintf(terminal, sizeof(terminal), "%s", ut->ut_line);
-				snprintf(where, sizeof(where), "%s", ut->ut_host);
-				if (where[0] == '\0')
-				{
-					strcpy(where, "N/A");
-				}
-				strftime(login_time, sizeof(login_time), "%Y-%m-%d %H:%M:%S", localtime(&ut->ut_tv.tv_sec));
-				break;
-			}
-		}
-		endutent();
+        while ((ut = getutent()) != NULL) {
+            if (ut->ut_type == USER_PROCESS && strcmp(ut->ut_user, pwd->pw_name) == 0) {
+                snprintf(terminal, sizeof(terminal), "%s", ut->ut_line);
+                snprintf(where, sizeof(where), "%s", ut->ut_host);
+                if (where[0] == '\0') strcpy(where, "N/A");
+
+                strftime(login_time, sizeof(login_time), "%Y-%m-%d %H:%M:%S", localtime(&ut->ut_tv.tv_sec));
+
+                // Calcular tiempo de inactividad
+                char term_path[100];
+                snprintf(term_path, sizeof(term_path), "/dev/%s", ut->ut_line);
+                struct stat term_stat;
+                if (stat(term_path, &term_stat) == 0) {
+                    time_t now = time(NULL);
+                    int idle_seconds = now - term_stat.st_atime;
+                    snprintf(idle_time, sizeof(idle_time), "%d minutes %d seconds idle", idle_seconds / 60, idle_seconds % 60);
+                }
+
+                // Verificar mensajes (permissions en el terminal)
+                if (access(term_path, W_OK) == 0) {
+                    strcpy(messages_status, "messages on");
+                }
+
+                break;
+            }
+        }
+        endutent();
 
 		if (strcmp(login_time, "N/A") == 0)
 		{
@@ -723,27 +738,30 @@ void obtener_usuarios(char usuarios[MAX_USERS][MAX_STRING_LENGTH], int *num_usua
 			continue;
 			}
 		}
-		
 
-		leer_archivo_usuario(pwd->pw_dir, ".plan", plan, sizeof(plan));
-		leer_archivo_usuario(pwd->pw_dir, ".project", project, sizeof(project));
+        char mail_path[100];
+        snprintf(mail_path, sizeof(mail_path), "/var/mail/%s", pwd->pw_name);
+        struct stat mail_stat;
+        if (stat(mail_path, &mail_stat) == 0 && mail_stat.st_size > 0) {
+            strcpy(mail_status, "You have mail.");
+        }
 
-		snprintf(buffer, MAX_STRING_LENGTH,
-				 "%s;%s;%s;%s;%s;%s;%s;%s;%s\r\n",
-				 pwd->pw_name, pwd->pw_gecos, terminal, login_time, where, pwd->pw_dir, pwd->pw_shell, plan, project);
+        leer_archivo_usuario(pwd->pw_dir, ".plan", plan, sizeof(plan));
+        leer_archivo_usuario(pwd->pw_dir, ".project", project, sizeof(project));
 
-		// Copiar buffer y buffer_parcial en líneas consecutivas del array
-		if (*num_usuarios + 1 < MAX_USERS)
-		{
-			strncpy(usuarios[*num_usuarios], buffer, MAX_STRING_LENGTH - 1);
-			usuarios[*num_usuarios][MAX_STRING_LENGTH - 1] = '\0'; // Asegurar terminación
-			(*num_usuarios)++;
-		}
-		else
-		{
-			fprintf(stderr, "Error: Número máximo de usuarios excedido.\n");
-			break;
-		}
+        snprintf(buffer, MAX_STRING_LENGTH,
+                 "Login: %s;Name: %s;Directory: %s;Shell: %s;On since: %s;Idle: %s;%s;%s;Plan: %s",
+                 pwd->pw_name, pwd->pw_gecos, pwd->pw_dir, pwd->pw_shell, login_time,
+                 idle_time, messages_status, mail_status, plan);
+
+        if (*num_usuarios < MAX_USERS) {
+            strncpy(usuarios[*num_usuarios], buffer, MAX_STRING_LENGTH - 1);
+            usuarios[*num_usuarios][MAX_STRING_LENGTH - 1] = '\0';
+            (*num_usuarios)++;
+        } else {
+            fprintf(stderr, "Error: Número máximo de usuarios excedido.\n");
+            break;
+        }
 	}
 	fclose(utmp_file);
 	endpwent();

@@ -23,6 +23,7 @@
 #include <time.h>
 #include <sys/errno.h>
 #include <signal.h>
+#include <asm-generic/fcntl.h>
 
 #define PUERTO 13131
 #define TAM_BUFFER 12
@@ -52,6 +53,20 @@ void funcionUDP(char usuario[], char host[]);
 
 int main(int argc, char *argv[])
 {
+	const char *filename = "registro.txt";
+	FILE *file = fopen(filename, "a");
+	if (file == NULL)
+	{
+		perror("Error abriendo el archivo");
+		return EXIT_FAILURE;
+	}
+	int fd = fileno(file);
+	if (fd == -1)
+	{
+		perror("Error obteniendo el descriptor de archivo");
+		fclose(file);
+		return EXIT_FAILURE;
+	}
 	char usuario[50] = {0};
 	char host[50] = {0};
 
@@ -82,7 +97,7 @@ int main(int argc, char *argv[])
 
 		char *at_position = strchr(argv[2], '@');
 		if (at_position)
-		{	//Comprobar si hay algo delante de @
+		{ // Comprobar si hay algo delante de @
 			// Caso usuario@host
 			size_t usuario_len = at_position - argv[2];
 
@@ -530,22 +545,86 @@ void funcionUDP(char usuario[], char host[])
 	close(s);
 }
 
-void formatear_cadena(char *cadena)
-{
-	char user[100], full_name[100], tty[50], login_time[100];
-	char home_dir[100], shell[100], last_login[50], last_ip[50];
+void formatear_cadena(char *cadena) {
+    char user[100], full_name[100], tty[50], login_time[100];
+    char home_dir[100], where[100], shell[100], plan[256], project[256];
+    char idle_time[100], mail_status[50], messages_status[50];
 
-	// Dividir la cadena de entrada por los delimitadores ";"
-	sscanf(cadena, "%[^;];%[^;];%[^;];%[^;];%[^;];%[^;];%[^;];%[^;];%[^;]",
-		   user, full_name, tty, login_time, last_login, home_dir, shell, last_ip, last_ip);
+    // Dividir la cadena de entrada por los delimitadores ";" con strtok
+    char *token = strtok(cadena, ";");
+    strcpy(user, token ? token : "N/A");
 
-	// Formatear la salida similar a `finger -l`
-	printf("Login: %s\t\t", user);
-	printf("Name: %s\n", full_name);
-	printf("TTY: %s\t\t", tty);
-	printf("Idle Time: %s\n", login_time);
-	printf("Directory: %s\t", home_dir);
-	printf("Shell: %s\n", shell);
-	printf("Plan: %s\n", last_login);
-	printf("Project: %s\n", last_ip);
+    token = strtok(NULL, ";");
+    strcpy(full_name, token ? token : "N/A");
+
+    token = strtok(NULL, ";");
+    strcpy(tty, token ? token : "N/A");
+
+    token = strtok(NULL, ";");
+    strcpy(login_time, token ? token : "N/A");
+
+    token = strtok(NULL, ";");
+    strcpy(where, token ? token : "N/A");
+
+    token = strtok(NULL, ";");
+    strcpy(home_dir, token ? token : "N/A");
+
+    token = strtok(NULL, ";");
+    strcpy(shell, token ? token : "N/A");
+
+    token = strtok(NULL, ";");
+    strcpy(plan, token ? token : "No Plan.");
+
+    token = strtok(NULL, ";");
+    strcpy(project, token ? token : "No Project.");
+
+    token = strtok(NULL, ";");
+    strcpy(idle_time, token ? token : "N/A");
+
+    token = strtok(NULL, ";");
+    strcpy(mail_status, token ? token : "No mail.");
+
+    token = strtok(NULL, ";");
+    strcpy(messages_status, token ? token : "messages off");
+
+    // Escritura en archivo
+    const char *filename = "registro.txt";
+    FILE *file = fopen(filename, "a");
+    if (file == NULL) {
+        perror("Error abriendo el archivo");
+        exit(EXIT_FAILURE);
+    }
+
+    int fd = fileno(file);
+    if (fd == -1) {
+        perror("Error obteniendo el descriptor de archivo");
+        fclose(file);
+        exit(EXIT_FAILURE);
+    }
+
+    if (flock(fd, LOCK_EX) == -1) {
+        perror("Error bloqueando el archivo");
+        fclose(file);
+        exit(EXIT_FAILURE);
+    }
+
+    fprintf(file, "========================================\n");
+    fprintf(file, "%s\n", user);
+    fprintf(file, "%s\n", full_name);
+    fprintf(file, "%s\t\t", tty);
+    fprintf(file, "%s\n", login_time);
+    fprintf(file, "%s\n", idle_time);
+    fprintf(file, "%s\t\t%s\n", messages_status, mail_status);
+    fprintf(file, "%s\t\t%s\n", home_dir, shell);
+    fprintf(file, "%s\n", plan);
+    fprintf(file, "%s\n", project);
+    fprintf(file, "========================================\n");
+
+    if (flock(fd, LOCK_UN) == -1) {
+        perror("Error desbloqueando el archivo");
+        fclose(file);
+        exit(EXIT_FAILURE);
+    }
+
+    fclose(file);
 }

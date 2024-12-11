@@ -1,0 +1,23 @@
+========================================
+1Login: dkns
+ Name: Jorge Cuadrado Criado
+ Directory: /home/dkns		 On since: 101375765-05-18 18:29:59
+ Shell: /bin/bash
+N/A
+messages off		No mail.
+ Idle: 114 minutes 49 seconds idle		 messages on
+ No mail.
+ Plan: N/A
+
+========================================
+========================================
+1Login: dkns
+ Name: Jorge Cuadrado Criado
+ Directory: /home/dkns		 Shell: /bin/bash
+N/A
+messages off		No mail.
+ Idle: 115 minutes 38 seconds idle		 messages on
+ No mail.
+ Plan: N/A
+
+========================================
