@@ -496,8 +496,6 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 	char usuarios[MAX_USERS][MAX_STRING_LENGTH];
 	char num_usuarios_string[10];
 
-	printf("Esperando datos UDP...\n");
-
 	// Recibir datos del cliente
 	ssize_t received_len = recvfrom(s, buffer, TAM_BUFFER, 0, (struct sockaddr *)&clientaddr_in, &addrlen);
 	if (received_len == -1)
@@ -516,7 +514,6 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 	char client_ip[INET_ADDRSTRLEN];
 	inet_ntop(AF_INET, &clientaddr_in.sin_addr, client_ip, INET_ADDRSTRLEN);
 	printf("Mensaje recibido de %s:%d\n", client_ip, ntohs(clientaddr_in.sin_port));
-	printf("Datos recibidos (%zd bytes): %s\n", received_len, buffer);
 
 	char usuario[50];
 	strncpy(usuario, buffer, 50);
@@ -556,8 +553,6 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 
 	// campos de sendto: socket, mensaje, longitud del mensaje, flags, dirección del cliente, longitud de la dirección
 
-	printf("numUsuarios: %d\n", num_usuarios);
-
 	snprintf(num_usuarios_string, sizeof(num_usuarios_string), "%d", num_usuarios);
 	nc = sendto(s, num_usuarios_string, sizeof(num_usuarios_string), 0, (struct sockaddr *)&clientaddr_in, addrlen);
 	if (nc == -1)
@@ -580,8 +575,6 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 		}
 		i++;
 	}
-
-	printf("Respuesta enviada al cliente.\n");
 }
 
 // Función para leer archivos de usuario (.plan y .project)
@@ -678,6 +671,10 @@ void obtener_usuarios(char usuarios[MAX_USERS][MAX_STRING_LENGTH], int *num_usua
 			{
 				snprintf(terminal, sizeof(terminal), "%s", ut->ut_line);
 				snprintf(where, sizeof(where), "%s", ut->ut_host);
+				if (where[0] == '\0')
+				{
+					strcpy(where, "N/A");
+				}
 				strftime(login_time, sizeof(login_time), "%Y-%m-%d %H:%M:%S", localtime(&ut->ut_tv.tv_sec));
 				break;
 			}

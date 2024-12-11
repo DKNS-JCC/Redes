@@ -1,4 +1,4 @@
- /*
+/*
  *			C L I E N T C P
  *
  *	This is an example program that demonstrates the use of
@@ -254,11 +254,10 @@ void funcionTCP(char usuario[], char host[])
 			fprintf(stderr, "%s: unable to send request\n", "clientTCP");
 			exit(1);
 		}
-		
 	}
-	else 
+	else
 	{
-		char clrf [] = "null\r\n";
+		char clrf[] = "null\r\n";
 		if (send(s, clrf, strlen(clrf), 0) == -1)
 		{
 			perror("clientTCP");
@@ -288,46 +287,47 @@ void funcionTCP(char usuario[], char host[])
 	 */
 
 	size_t total_received = 0;
-    char *received_data = NULL;
+	char *received_data = NULL;
 	ssize_t bytes_received;
 
-    while ((bytes_received = recv(s, buf, TAM_BUFFER - 1, 0)) > 0)
-    {
-        buf[bytes_received] = '\0'; // Null-terminate the buffer
+	while ((bytes_received = recv(s, buf, TAM_BUFFER - 1, 0)) > 0)
+	{
+		buf[bytes_received] = '\0'; // Null-terminate the buffer
 
-        // Resize buffer to hold new data
-        char *temp = realloc(received_data, total_received + bytes_received + 1);
-        if (!temp)
-        {
-            perror("realloc");
-            free(received_data);
-            close(s);
-            exit(1);
-        }
-        received_data = temp;
+		// Resize buffer to hold new data
+		char *temp = realloc(received_data, total_received + bytes_received + 1);
+		if (!temp)
+		{
+			perror("realloc");
+			free(received_data);
+			close(s);
+			exit(1);
+		}
+		received_data = temp;
 
-        // Copy new data into the buffer
-        memcpy(received_data + total_received, buf, bytes_received);
-        total_received += bytes_received;
-        received_data[total_received] = '\0';
-    }
+		// Copy new data into the buffer
+		memcpy(received_data + total_received, buf, bytes_received);
+		total_received += bytes_received;
+		received_data[total_received] = '\0';
+	}
 
-    if (bytes_received == -1)
-    {
-        perror("recv");
-        free(received_data);
-        close(s);
-        exit(1);
-    }
+	if (bytes_received == -1)
+	{
+		perror("recv");
+		free(received_data);
+		close(s);
+		exit(1);
+	}
 
-    /* Print the complete received data */
-    printf("Complete data received from %s:\n%s\n", host, received_data);
-    printf("Total bytes received: %zu\n", total_received);
+	/* Print the complete received data */
+	printf("Received data from %s:\n%s\n", host, received_data);
+	formatear_cadena(received_data);
+	printf("Total bytes received: %zu\n", total_received);
 
-    /* Clean up */
-    free(received_data);
-    time(&timevar);
-    printf("\nAll done at %s", ctime(&timevar));
+	/* Clean up */
+	free(received_data);
+	time(&timevar);
+	printf("\nAll done at %s", ctime(&timevar));
 
 	/* Close the socket */
 	close(s);
@@ -441,101 +441,107 @@ void funcionUDP(char usuario[], char host[])
 
 	n_retry = RETRIES;
 
-	
-while (n_retry > 0) {
-        // Enviar el mensaje al servidor
-        if (sendto(s, usuario, strlen(usuario), 0, (struct sockaddr *)&servaddr_in, sizeof(servaddr_in)) == -1) {
-            perror("clientUDP");
-            close(s);
-            exit(1);
-        }
+	while (n_retry > 0)
+	{
+		// Enviar el mensaje al servidor
+		if (sendto(s, usuario, strlen(usuario), 0, (struct sockaddr *)&servaddr_in, sizeof(servaddr_in)) == -1)
+		{
+			perror("clientUDP");
+			close(s);
+			exit(1);
+		}
 
-        // Configurar temporizador para evitar bloqueo
-        alarm(TIMEOUT);
+		// Configurar temporizador para evitar bloqueo
+		alarm(TIMEOUT);
 
-        // Esperar respuesta
-		//campos de recvfrom: socket, mensaje, longitud del mensaje, flags, dirección del cliente, longitud de la dirección
-		if(num_usuarios == -1){
-		 	if (recvfrom(s, &num_usuarios_string,sizeof(num_usuarios_string), 0, (struct sockaddr *)&servaddr_in, &addrlen) == -1) {
-				if (errno == EINTR) {  // Timeout ocurrió
+		// Esperar respuesta
+		// campos de recvfrom: socket, mensaje, longitud del mensaje, flags, dirección del cliente, longitud de la dirección
+		if (num_usuarios == -1)
+		{
+			if (recvfrom(s, &num_usuarios_string, sizeof(num_usuarios_string), 0, (struct sockaddr *)&servaddr_in, &addrlen) == -1)
+			{
+				if (errno == EINTR)
+				{ // Timeout ocurrió
 					printf("Intento %d fallido, reintentando...\n", RETRIES - n_retry + 1);
 					n_retry--;
-				} else {
+				}
+				else
+				{
 					perror("Error en recvfrom");
 					close(s);
 					exit(1);
 				}
-			} else {
+			}
+			else
+			{
 				num_usuarios = atoi(num_usuarios_string);
-				alarm(0);  // Cancelar la alarma
+				alarm(0); // Cancelar la alarma
 				n_retry = RETRIES;
 				printf("Usuarios encontrados recibidos en cliente: %d\n", num_usuarios);
 			}
 		}
 
-		if(num_usuarios != -1){
-			printf("me he metido en el if distinto de -1\n");
-			 alarm(TIMEOUT);
-			while(j < num_usuarios){
-				printf("me he metido en el while de usuarios\n");
+		if (num_usuarios != -1)
+		{
+			alarm(TIMEOUT);
+			while (j < num_usuarios)
+			{
 				memset(buffer, 0, BUFFERSIZE);
-				printf("voy a recibir\n");
-				if (recvfrom(s, &buffer, BUFFERSIZE - 1, 0, (struct sockaddr *)&servaddr_in, &addrlen) == -1) {
-					if (errno == EINTR) {  // Timeout ocurrió
+				if (recvfrom(s, &buffer, BUFFERSIZE - 1, 0, (struct sockaddr *)&servaddr_in, &addrlen) == -1)
+				{
+					if (errno == EINTR)
+					{ // Timeout ocurrió
 						printf("Intento %d fallido, reintentando...\n", RETRIES - n_retry + 1);
 						n_retry--;
-					} else {
+					}
+					else
+					{
 						perror("Error en recvfrom");
 						close(s);
 						exit(1);
 					}
-				} else {
-					alarm(0);  // Cancelar la alarma
+				}
+				else
+				{
+					alarm(0); // Cancelar la alarma
 					n_retry = RETRIES;
 					buffer[BUFFERSIZE - 1] = '\0';
-					printf("Usuario %d: %s\n", j, buffer);
-					
+					formatear_cadena(buffer);
 					j++;
 				}
 			}
-			if(j == num_usuarios){
+			if (j == num_usuarios)
+			{
 				break;
-			}	
+			}
 		}
-		
-    }
+	}
 
-    // Si se agotaron los intentos
-    if (n_retry == 0) {
-        printf("No se pudo obtener respuesta después de %d intentos.\n", RETRIES);
-    }
+	// Si se agotaron los intentos
+	if (n_retry == 0)
+	{
+		printf("No se pudo obtener respuesta después de %d intentos.\n", RETRIES);
+	}
 
-    close(s);
+	close(s);
 }
 
-void formatear_cadena(const char cadena) {
-    char buffer[516];
-    char * tokens[10];
-    int i = 0;
+void formatear_cadena(char *cadena)
+{
+	char user[100], full_name[100], tty[50], login_time[100];
+	char home_dir[100], shell[100], last_login[50], last_ip[50];
 
+	// Dividir la cadena de entrada por los delimitadores ";"
+	sscanf(cadena, "%[^;];%[^;];%[^;];%[^;];%[^;];%[^;];%[^;];%[^;];%[^;]",
+		   user, full_name, tty, login_time, last_login, home_dir, shell, last_ip, last_ip);
 
-    strncpy(buffer, cadena, sizeof(buffer));
-    buffer[sizeof(buffer) - 1] = '\0';
-
-
-    char *token = strtok(buffer, ";");
-    while (token != NULL && i < 10) {
-        tokens[i++] = token;
-        token = strtok(NULL, ";");
-    }
-
-    if (i < 9) {
-        fprintf(stderr, "La cadena no tiene el formato esperado.\n");
-        return;
-    }
-
-    printf("Login: %s\t\tName: %s\n", tokens[0], tokens[1]);
-    printf("Directory: %s\tShell: %s\n", tokens[5], tokens[6]);
-    printf("Office: %s\t\tHome Phone: %s\n", tokens[2], tokens[7]);
-    printf("On since %s on %s\t%s\n", tokens[3], tokens[2], tokens[8]);
+	// Formatear la salida similar a `finger -l`
+	printf("Login: %s\t\t", user);
+	printf("Name: %s\n", full_name);
+	printf("TTY: %s\t\t", tty);
+	printf("Idle Time: %s\n", login_time);
+	printf("Directory: %s\t", home_dir);
+	printf("Shell: %s\n", shell);
+	printf("Plan: %s\n", last_login);
+	printf("Project: %s\n", last_ip);
 }
