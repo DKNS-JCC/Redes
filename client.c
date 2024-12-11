@@ -65,7 +65,6 @@ int main(int argc, char *argv[])
 	{
 		if (strcmp(argv[1], "TCP") == 0)
 		{
-			printf("ARGUMENTOS SON 2\n");
 			funcionTCP("null", "localhost");
 		}
 		else if (strcmp(argv[1], "UDP") == 0)
@@ -83,13 +82,18 @@ int main(int argc, char *argv[])
 
 		char *at_position = strchr(argv[2], '@');
 		if (at_position)
-		{
+		{	//Comprobar si hay algo delante de @
 			// Caso usuario@host
 			size_t usuario_len = at_position - argv[2];
+
 			if (usuario_len < sizeof(usuario))
 			{
 				strncpy(usuario, argv[2], usuario_len);
 				usuario[usuario_len] = '\0'; // Asegura terminación nula
+			}
+			if (usuario_len == 0)
+			{
+				strcpy(usuario, "null");
 			}
 			else
 			{
