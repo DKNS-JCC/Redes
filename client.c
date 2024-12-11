@@ -258,7 +258,7 @@ void funcionTCP(char usuario[], char host[])
 	}
 	else 
 	{
-		char clrf [] = "\r\n";
+		char clrf [] = "null\r\n";
 		if (send(s, clrf, strlen(clrf), 0) == -1)
 		{
 			perror("clientTCP");
@@ -273,7 +273,7 @@ void funcionTCP(char usuario[], char host[])
 	 * have just been sent, indicating that we will not be
 	 * sending any further requests.
 	 */
-	if (shutdown(s, 1) == -1)
+	if (shutdown(s, SHUT_WR) == -1)
 	{
 		perror("clientTCP");
 		fprintf(stderr, "%s: unable to shutdown socket\n", "clientTCP");
@@ -282,50 +282,55 @@ void funcionTCP(char usuario[], char host[])
 
 	/* Now, start receiving all of the replys from the server.
 	 * This loop will terminate when the recv returns zero,
-	 * which is an end-of-file condition.  This will happen
+	 * which is an end-of-file condition. This will happen
 	 * after the server has sent all of its replies, and closed
 	 * its end of the connection.
 	 */
-	while (i = recv(s, buf, TAM_BUFFER, 0))
-	{
-		if (i == -1)
-		{
-			perror("clientTCP");
-			fprintf(stderr, "%s: error reading result\n", "clientTCP");
-			exit(1);
-		}
-		/* The reason this while loop exists is that there
-		 * is a remote possibility of the above recv returning
-		 * less than TAM_BUFFER bytes.  This is because a recv returns
-		 * as soon as there is some data, and will not wait for
-		 * all of the requested data to arrive.  Since TAM_BUFFER bytes
-		 * is relatively small compared to the allowed TCP
-		 * packet sizes, a partial receive is unlikely.  If
-		 * this example had used 2048 bytes requests instead,
-		 * a partial receive would be far more likely.
-		 * This loop will keep receiving until all TAM_BUFFER bytes
-		 * have been received, thus guaranteeing that the
-		 * next recv at the top of the loop will start at
-		 * the begining of the next reply.
-		 */
-		while (i < TAM_BUFFER)
-		{
-			j = recv(s, &buf[i], TAM_BUFFER - i, 0);
-			if (j == -1)
-			{
-				perror("clientTCP");
-				fprintf(stderr, "%s: error reading result\n", "clientTCP");
-				exit(1);
-			}
-			i += j;
-		}
-		/* Print out message indicating the identity of this reply. */
-		printf("Received result number %d\n", *buf);
-	}
 
-	/* Print message indicating completion of task. */
-	time(&timevar);
-	printf("All done at %s", (char *)ctime(&timevar));
+	size_t total_received = 0;
+    char *received_data = NULL;
+	ssize_t bytes_received;
+
+    while ((bytes_received = recv(s, buf, TAM_BUFFER - 1, 0)) > 0)
+    {
+        buf[bytes_received] = '\0'; // Null-terminate the buffer
+
+        // Resize buffer to hold new data
+        char *temp = realloc(received_data, total_received + bytes_received + 1);
+        if (!temp)
+        {
+            perror("realloc");
+            free(received_data);
+            close(s);
+            exit(1);
+        }
+        received_data = temp;
+
+        // Copy new data into the buffer
+        memcpy(received_data + total_received, buf, bytes_received);
+        total_received += bytes_received;
+        received_data[total_received] = '\0';
+    }
+
+    if (bytes_received == -1)
+    {
+        perror("recv");
+        free(received_data);
+        close(s);
+        exit(1);
+    }
+
+    /* Print the complete received data */
+    printf("Complete data received from %s:\n%s\n", host, received_data);
+    printf("Total bytes received: %zu\n", total_received);
+
+    /* Clean up */
+    free(received_data);
+    time(&timevar);
+    printf("\nAll done at %s", ctime(&timevar));
+
+	/* Close the socket */
+	close(s);
 }
 
 void handler()
