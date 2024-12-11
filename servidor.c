@@ -714,12 +714,19 @@ void obtener_usuarios(char usuarios[MAX_USERS][MAX_STRING_LENGTH], int *num_usua
 		if (j == 0)
 		{
 			strcat(NAME2, "\r\n");
+			if ((strcmp(NAME2, LOGIN2) != 0) && (strcmp(LOGIN2, "null\r\n") != 0))
+			{
+				continue;
+			}
 		}
-
-		if ((strcmp(NAME2, LOGIN2) != 0) && (strcmp(LOGIN2, "null\r\n") != 0))
+		if (j == 1)
 		{
+			if ((strcmp(NAME2, LOGIN2) != 0) && (strcmp(LOGIN2, "null") != 0))
+			{
 			continue;
+			}
 		}
+		
 
 		leer_archivo_usuario(pwd->pw_dir, ".plan", plan, sizeof(plan));
 		leer_archivo_usuario(pwd->pw_dir, ".project", project, sizeof(project));
