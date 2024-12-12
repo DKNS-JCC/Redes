@@ -565,15 +565,9 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 		printf("No se pudo enviar la respuesta al cliente con el numero de usuarios.\n");
 		return;
 	}
-<<<<<<< HEAD
-	i= 0;
-=======
-<<<<<<< HEAD
-	nc = sendto(s, "FINALIZAR", 9, 0, (struct sockaddr *)&clientaddr_in, addrlen);
-	registrar_evento("Comunicación finalizada", "Cliente", client_ip, "UDP", ntohs(clientaddr_in.sin_port), NULL, NULL);
-=======
 
->>>>>>> refs/remotes/origin/main
+	i= 0;
+
 	while (i < num_usuarios)
 	{
 
@@ -586,7 +580,11 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 		}
 		i++;
 	}
->>>>>>> 2b6ed38fca0457322753228d69238a1ddc0d15c3
+
+	nc = sendto(s, "FINALIZAR", 9, 0, (struct sockaddr *)&clientaddr_in, addrlen);
+	registrar_evento("Comunicación finalizada", "Cliente", client_ip, "UDP", ntohs(clientaddr_in.sin_port), NULL, NULL);
+
+	
 }
 
 // Función para leer archivos de usuario (.plan y .project)
