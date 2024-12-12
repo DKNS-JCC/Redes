@@ -360,7 +360,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	 */
 	printf("Startup from %s port %u at %s",
 		   hostname, ntohs(clientaddr_in.sin_port), (char *)ctime(&timevar));
-
+	registrar_evento("Conexión iniciada", "Cliente", hostname, "TCP", ntohs(clientaddr_in.sin_port), NULL, NULL);
 	/* Set the socket for a lingering, graceful close.
 	 * This will cause a final close of this socket to wait until all of the
 	 * data sent on it has been received by the remote host.
@@ -453,6 +453,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			return;
 		}
 	}
+	registrar_evento("Respuesta enviada", "Cliente", hostname, "TCP", ntohs(clientaddr_in.sin_port), NULL, "Datos recibidos correctamente");
 
 	/* Cerrar conexión */
 	close(s);
@@ -461,6 +462,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	printf("Datos completos recibidos de %s:\n%s\n", hostname, received_data);
 	printf("Total recibido: %zu bytes, %d solicitudes\n", total_received, reqcnt);
 
+	registrar_evento("Comunicación finalizada", "Cliente", hostname, "TCP", ntohs(clientaddr_in.sin_port), NULL, NULL);
 	/* Liberar memoria dinámica */
 	free(received_data);
 
@@ -563,7 +565,15 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 		printf("No se pudo enviar la respuesta al cliente con el numero de usuarios.\n");
 		return;
 	}
+<<<<<<< HEAD
 	i= 0;
+=======
+<<<<<<< HEAD
+	nc = sendto(s, "FINALIZAR", 9, 0, (struct sockaddr *)&clientaddr_in, addrlen);
+	registrar_evento("Comunicación finalizada", "Cliente", client_ip, "UDP", ntohs(clientaddr_in.sin_port), NULL, NULL);
+=======
+
+>>>>>>> refs/remotes/origin/main
 	while (i < num_usuarios)
 	{
 
@@ -576,6 +586,7 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 		}
 		i++;
 	}
+>>>>>>> 2b6ed38fca0457322753228d69238a1ddc0d15c3
 }
 
 // Función para leer archivos de usuario (.plan y .project)
