@@ -335,22 +335,18 @@ void funcionTCP(char usuario[], char host[])
 	}
 
 	/* Print the complete received data */
-	printf("Received data from %s:\n%s\n", host, received_data);
 	formatear_cadena(received_data);
-	printf("Total bytes received: %zu\n", total_received);
 
 	/* Clean up */
 	free(received_data);
 	time(&timevar);
-	printf("\nAll done at %s", ctime(&timevar));
-
 	/* Close the socket */
 	close(s);
 }
 
 void handler()
 {
-	printf("Alarma recibida \n");
+	
 }
 
 void funcionUDP(char usuario[], char host[])
@@ -416,8 +412,6 @@ void funcionUDP(char usuario[], char host[])
 	 * that this program could easily be ported to a host
 	 * that does require it.
 	 */
-	printf("Connected to %s on port %u at %s", host, ntohs(myaddr_in.sin_port), (char *)ctime(&timevar));
-
 	/* Set up the server address. */
 	servaddr_in.sin_family = AF_INET;
 	/* Get the host information for the server's hostname that the

@@ -21,6 +21,7 @@
 #include <utmp.h>
 #include <sys/stat.h>
 #include <asm-generic/fcntl.h>
+#include <ctype.h>
 
 #define PUERTO 13131
 #define ADDRNOTFOUND 0xffffffff /* return address for unfound host */
@@ -46,6 +47,9 @@ extern int errno;
 void serverTCP(int s, struct sockaddr_in peeraddr_in);
 void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in);
 void errout(char *); /* declare error out routine */
+void registrar_evento(const char *descripcion, const char *host, const char *ip, const char *protocolo, int puerto, const char *orden, const char *respuesta);
+void obtener_usuarios(char usuarios[MAX_USERS][MAX_STRING_LENGTH], int *num_usuarios, char *usuario, int j);
+void leer_archivo_usuario(const char *home, const char *filename, char *buffer, size_t len);
 int i = 0;
 int FIN = 0; /* Para el cierre ordenado */
 void finalizar() { FIN = 1; }
@@ -125,14 +129,12 @@ char *argv[];
 	if (s_UDP == -1)
 	{
 		perror(argv[0]);
-		printf("%s: unable to create socket UDP\n", argv[0]);
 		exit(1);
 	}
 	/* Bind the server's address to the socket. */
 	if (bind(s_UDP, (struct sockaddr *)&myaddr_in, sizeof(struct sockaddr_in)) == -1)
 	{
 		perror(argv[0]);
-		printf("%s: unable to bind address UDP\n", argv[0]);
 		exit(1);
 	}
 
@@ -274,7 +276,6 @@ char *argv[];
 					if (cc == -1)
 					{
 						perror(argv[0]);
-						printf("%s: recvfrom error\n", argv[0]);
 						exit(1);
 					}
 					/* Make sure the message received is
@@ -358,9 +359,9 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	 * necessary, but the ntohs() call is included here so
 	 * that this program could easily be ported to a host
 	 * that does require it.
+
+	 * Mostrar el inicio de la conexión en el log
 	 */
-	printf("Startup from %s port %u at %s",
-		   hostname, ntohs(clientaddr_in.sin_port), (char *)ctime(&timevar));
 	registrar_evento("Conexión iniciada", "Cliente", hostname, "TCP", ntohs(clientaddr_in.sin_port), NULL, NULL);
 	/* Set the socket for a lingering, graceful close.
 	 * This will cause a final close of this socket to wait until all of the
@@ -387,7 +388,6 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	/* Bucle para recibir datos del cliente */
 	while ((len = recv(s, buf, TAM_BUFFER, 0)) > 0)
 	{
-		printf("Fragmento recibido: %d bytes\n", len);
 
 		// Redimensionar el buffer dinámico
 		char *temp = realloc(received_data, total_received + len + 1);
@@ -418,7 +418,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	}
 	else if (len == 0)
 	{
-		printf("El cliente cerró la conexión.\n");
+		registrar_evento("Datos recibidos", "Cliente", hostname, "TCP", ntohs(clientaddr_in.sin_port), received_data, NULL);
 	}
 
 	char usuario[50];
@@ -459,17 +459,12 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	/* Cerrar conexión */
 	close(s);
 
-	/* Mostrar el contenido recibido */
-	printf("Datos completos recibidos de %s:\n%s\n", hostname, received_data);
-	printf("Total recibido: %zu bytes, %d solicitudes\n", total_received, reqcnt);
-
 	registrar_evento("Comunicación finalizada", "Cliente", hostname, "TCP", ntohs(clientaddr_in.sin_port), NULL, NULL);
 	/* Liberar memoria dinámica */
 	free(received_data);
 
 	/* Log de finalización */
 	time(&timevar);
-	printf("Conexión completada %s, %d solicitudes, en %s\n", hostname, reqcnt, ctime(&timevar));
 }
 
 /*
@@ -477,7 +472,6 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
  */
 void errout(char *hostname)
 {
-	printf("Connection with %s aborted on error\n", hostname);
 	exit(1);
 }
 
@@ -517,7 +511,6 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 	// Mostrar la información del cliente y los datos recibidos
 	char client_ip[INET_ADDRSTRLEN];
 	inet_ntop(AF_INET, &clientaddr_in.sin_addr, client_ip, INET_ADDRSTRLEN);
-	printf("Mensaje recibido de %s:%d\n", client_ip, ntohs(clientaddr_in.sin_port));
 
 	char usuario[50];
 	strncpy(usuario, buffer, 50);
@@ -550,7 +543,6 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 	{
 
 		perror("Error al enviar respuesta");
-		printf("No se pudo enviar la respuesta al cliente con el numero de usuarios.\n");
 		return;
 	}
 	i= 0;
@@ -561,7 +553,6 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 		if (nc == -1)
 		{
 			perror("Error al enviar respuesta");
-			printf("No se pudo enviar la respuesta al cliente con los usuarios.\n");
 			return;
 		}
 		i++;
