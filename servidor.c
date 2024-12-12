@@ -529,7 +529,7 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 	registrar_evento("Orden recibida", "Cliente", client_ip, "UDP", ntohs(clientaddr_in.sin_port), buffer, NULL);
 
 	char respuesta[512] = "Usuarios encontrados:\n";
-	for (int i = 0; i < num_usuarios; i++)
+	for ( i = 0; i < num_usuarios; i++)
 	{
 		strncat(respuesta, usuarios[i], sizeof(respuesta) - strlen(respuesta) - 1);
 		strncat(respuesta, "\n", sizeof(respuesta) - strlen(respuesta) - 1);
@@ -563,7 +563,7 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 		printf("No se pudo enviar la respuesta al cliente con el numero de usuarios.\n");
 		return;
 	}
-
+	i= 0;
 	while (i < num_usuarios)
 	{
 
