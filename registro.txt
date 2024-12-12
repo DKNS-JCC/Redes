@@ -1,0 +1,176 @@
+========================================
+1Login: dkns
+ Name: Jorge Cuadrado Criado
+ Directory: /home/dkns		 On since: 101375765-05-18 18:29:59
+ Shell: /bin/bash
+N/A
+messages off		No mail.
+ Idle: 114 minutes 49 seconds idle		 messages on
+ No mail.
+ Plan: N/A
+
+========================================
+========================================
+1Login: dkns
+ Name: Jorge Cuadrado Criado
+ Directory: /home/dkns		 Shell: /bin/bash
+N/A
+messages off		No mail.
+ Idle: 115 minutes 38 seconds idle		 messages on
+ No mail.
+ Plan: N/A
+
+========================================
+========================================
+1Login: ekaitzhm
+Name: ,,,
+Directory: /home/ekaitzhm		Shell: /bin/bash
+N/A
+messages off		No mail.
+Idle: 52 minutes 31 seconds idle		messages on
+No mail.
+Plan: N/A
+
+========================================
+========================================
+1Login: ekaitzhm
+Name: ,,,
+Directory: /home/ekaitzhm		Shell: /bin/bash
+N/A
+messages off		No mail.
+Idle: 53 minutes 55 seconds idle		messages on
+No mail.
+Plan: N/A
+
+========================================
+========================================
+1Login: ekaitzhm
+Name: ,,,
+Directory: /home/ekaitzhm		Shell: /bin/bash
+N/A
+messages off		No mail.
+Idle: 55 minutes 55 seconds idle		messages on
+No mail.
+Plan: N/A
+
+========================================
+========================================
+1Login: ekaitzhm
+Name: ,,,
+Directory: /home/ekaitzhm		Shell: /bin/bash
+N/A
+messages off		No mail.
+Idle: 56 minutes 42 seconds idle		messages on
+No mail.
+Plan: N/A
+
+========================================
+========================================
+1Login: ekaitzhm
+Name: ,,,
+Directory: /home/ekaitzhm		Shell: /bin/bash
+N/A
+messages off		No mail.
+Idle: 57 minutes 35 seconds idle		messages on
+No mail.
+Plan: N/A
+
+========================================
+========================================
+1Login: ekaitzhm
+Name: ,,,
+Directory: /home/ekaitzhm		Shell: /bin/bash
+N/A
+messages off		No mail.
+Idle: 58 minutes 0 seconds idle		messages on
+No mail.
+Plan: N/A
+
+========================================
+========================================
+1Login: ekaitzhm
+Name: ,,,
+Directory: /home/ekaitzhm		Shell: /bin/bash
+N/A
+messages off		No mail.
+Idle: 58 minutes 16 seconds idle		messages on
+No mail.
+Plan: N/A
+
+========================================
+========================================
+1Login: ekaitzhm
+Name: ,,,
+Directory: /home/ekaitzhm		Shell: /bin/bash
+N/A
+messages off		No mail.
+Idle: 59 minutes 15 seconds idle		messages on
+No mail.
+Plan: N/A
+
+========================================
+========================================
+1Login: ekaitzhm
+Name: ,,,
+Directory: /home/ekaitzhm		Shell: /bin/bash
+N/A
+messages off		No mail.
+Idle: 61 minutes 32 seconds idle		messages on
+No mail.
+Plan: N/A
+
+========================================
+========================================
+1Login: ekaitzhm
+Name: ,,,
+Directory: /home/ekaitzhm		Shell: /bin/bash
+N/A
+messages off		No mail.
+Idle: 62 minutes 48 seconds idle		messages on
+No mail.
+Plan: N/A
+
+========================================
+========================================
+1Login: ekaitzhm
+Name: ,,,
+Directory: /home/ekaitzhm		Shell: /bin/bash
+N/A
+messages off		No mail.
+Idle: 63 minutes 59 seconds idle		messages on
+No mail.
+Plan: N/A
+
+========================================
+========================================
+1Login: ekaitzhm
+Name: ,,,
+Directory: /home/ekaitzhm		Shell: /bin/bash
+N/A
+messages off		No mail.
+Idle: 64 minutes 53 seconds idle		messages on
+No mail.
+Plan: N/A
+
+========================================
+========================================
+1Login: ekaitzhm
+Name: ,,,
+Directory: /home/ekaitzhm		Shell: /bin/bash
+N/A
+messages off		No mail.
+Idle: 59 minutes 18 seconds idle		messages on
+No mail.
+Plan: N/A
+
+========================================
+========================================
+Login: ekaitzhm
+Name: ,,,
+Directory: /home/ekaitzhm		Shell: /bin/bash
+N/A
+messages off		No mail.
+Idle: 61 minutes 29 seconds idle		messages on
+No mail.
+Plan: N/A
+========================================

@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <pwd.h>
 #include <utmp.h>
+#include <sys/stat.h>
 
 #define PUERTO 13131
 #define ADDRNOTFOUND 0xffffffff /* return address for unfound host */
@@ -309,6 +310,9 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	int reqcnt = 0;			/* keeps count of number of requests */
 	char buf[TAM_BUFFER];	/* This example uses TAM_BUFFER byte messages. */
 	char hostname[MAXHOST]; /* remote host's name string */
+	int num_usuarios;
+	char usuarios[MAX_USERS][MAX_STRING_LENGTH];
+	char num_usuarios_string[10];
 
 	char *received_data = NULL; // Buffer dinámico para todo el contenido recibido
 	size_t total_received = 0;	// Total de datos recibidos
@@ -405,6 +409,8 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		reqcnt++; // Incrementar contador de solicitudes
 	}
 
+	sleep(1);
+
 	if (len == -1)
 	{
 		perror("Error en recv");
@@ -414,10 +420,38 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		printf("El cliente cerró la conexión.\n");
 	}
 
-	/* Respuesta al cliente */
-	if (send(s, "Datos recibidos correctamente", 28, 0) != 28)
+	char usuario[50];
+	strncpy(usuario, received_data, sizeof(usuario));
+	obtener_usuarios(usuarios, &num_usuarios, usuario, 0);
+
+	/* Respuesta al cliente con el número de usuarios encontrados*/
+	snprintf(num_usuarios_string, sizeof(num_usuarios_string), "%d", num_usuarios);
+	if (send(s, num_usuarios_string, strlen(num_usuarios_string), 0) == -1)
 	{
-		perror("Error enviando respuesta");
+		perror("Error al enviar el número de usuarios");
+		close(s);
+		return;
+	}
+
+	/*Ir enviando linea a linea el contenido del array*/
+	int i = 0;
+	for (i = 0; i < num_usuarios; i++)
+	{
+		if (send(s, usuarios[i], strlen(usuarios[i]), 0) == -1)
+		{
+			perror("Error al enviar datos de usuario");
+			close(s);
+			return;
+		}
+
+		// Enviar un delimitador para indicar el fin de cada usuario
+		const char delimitador[] = "\r\n";
+		if (send(s, delimitador, strlen(delimitador), 0) == -1)
+		{
+			perror("Error al enviar delimitador");
+			close(s);
+			return;
+		}
 	}
 	registrar_evento("Respuesta enviada", "Cliente", hostname, "TCP", ntohs(clientaddr_in.sin_port), NULL, "Datos recibidos correctamente");
 
@@ -459,12 +493,11 @@ void errout(char *hostname)
 void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 {
 	struct in_addr reqaddr; /* Para la dirección solicitada */
-	int nc,errcode;
+	int nc, errcode;
 	socklen_t addrlen = sizeof(clientaddr_in);
 	int num_usuarios;
 	char usuarios[MAX_USERS][MAX_STRING_LENGTH];
-
-	printf("Esperando datos UDP...\n");
+	char num_usuarios_string[10];
 
 	// Recibir datos del cliente
 	ssize_t received_len = recvfrom(s, buffer, TAM_BUFFER, 0, (struct sockaddr *)&clientaddr_in, &addrlen);
@@ -484,18 +517,11 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 	char client_ip[INET_ADDRSTRLEN];
 	inet_ntop(AF_INET, &clientaddr_in.sin_addr, client_ip, INET_ADDRSTRLEN);
 	printf("Mensaje recibido de %s:%d\n", client_ip, ntohs(clientaddr_in.sin_port));
-	printf("Datos recibidos (%zd bytes): %s\n", received_len, buffer);
 
 	char usuario[50];
 	strncpy(usuario, buffer, 50);
 
-	obtener_usuarios(usuarios, &num_usuarios, usuario);
-
-	// impresion de los usuarios
-	for (int i = 0; i < num_usuarios; i++)
-	{
-		printf("%d: %s", i, usuarios[i]);
-	}
+	obtener_usuarios(usuarios, &num_usuarios, usuario, 1);
 
 	// Registrar en el archivo de log
 	char descripcion[128];
@@ -528,22 +554,35 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 	*/
 	// Enviar la dirección resuelta al cliente
 
-	//campos de sendto: socket, mensaje, longitud del mensaje, flags, dirección del cliente, longitud de la dirección
+	// campos de sendto: socket, mensaje, longitud del mensaje, flags, dirección del cliente, longitud de la dirección
 
-	
-	printf ("numUsuarios: %d\n", num_usuarios);	
-	while(i < num_usuarios){
-			i++;
-			nc = sendto(s, usuarios[i], strlen(usuarios[i]), 0, (struct sockaddr *)&clientaddr_in, addrlen);
-			if (nc == -1)
-			{
-				perror("Error al enviar respuesta");
-				printf("No se pudo enviar la respuesta al cliente.\n");
-				return;
-			}
+	snprintf(num_usuarios_string, sizeof(num_usuarios_string), "%d", num_usuarios);
+	nc = sendto(s, num_usuarios_string, sizeof(num_usuarios_string), 0, (struct sockaddr *)&clientaddr_in, addrlen);
+	if (nc == -1)
+	{
+		// p
+		perror("Error al enviar respuesta");
+		printf("No se pudo enviar la respuesta al cliente con el numero de usuarios.\n");
+		return;
 	}
+<<<<<<< HEAD
 	nc = sendto(s, "FINALIZAR", 9, 0, (struct sockaddr *)&clientaddr_in, addrlen);
 	registrar_evento("Comunicación finalizada", "Cliente", client_ip, "UDP", ntohs(clientaddr_in.sin_port), NULL, NULL);
+=======
+
+	while (i < num_usuarios)
+	{
+
+		nc = sendto(s, usuarios[i], strlen(usuarios[i]), 0, (struct sockaddr *)&clientaddr_in, addrlen);
+		if (nc == -1)
+		{
+			perror("Error al enviar respuesta");
+			printf("No se pudo enviar la respuesta al cliente con cada usuario.\n");
+			return;
+		}
+		i++;
+	}
+>>>>>>> 2b6ed38fca0457322753228d69238a1ddc0d15c3
 }
 
 // Función para leer archivos de usuario (.plan y .project)
@@ -580,7 +619,7 @@ void registrar_evento(const char *descripcion, const char *host, const char *ip,
 		return;
 	}
 
-	// Obtener fecha y hora actuales 
+	// Obtener fecha y hora actuales
 	time_t now = time(NULL);
 	char fecha_hora[50];
 	strftime(fecha_hora, sizeof(fecha_hora), "%Y-%m-%d %H:%M:%S", localtime(&now)); // Formato: YYYY-MM-DD HH:MM:SS
@@ -602,7 +641,7 @@ void registrar_evento(const char *descripcion, const char *host, const char *ip,
 }
 
 // Función para obtener la información de los usuarios
-void obtener_usuarios(char usuarios[MAX_USERS][MAX_STRING_LENGTH], int *num_usuarios, char *usuario)
+void obtener_usuarios(char usuarios[MAX_USERS][MAX_STRING_LENGTH], int *num_usuarios, char *usuario, int j)
 {
 	struct passwd *pwd;
 	struct utmp *ut;
@@ -612,9 +651,12 @@ void obtener_usuarios(char usuarios[MAX_USERS][MAX_STRING_LENGTH], int *num_usua
 	char where[50] = "N/A";
 	char plan[256] = "N/A";
 	char project[256] = "N/A";
-	char buffer[MAX_STRING_LENGTH];
+	char buffer[516];
+	char mail_status[50] = "No mail.";
+    char messages_status[50] = "messages off";
+    char idle_time[50] = "N/A";
 
-	utmp_file = fopen(_PATH_UTMP, "r");
+	utmp_file = fopen("/var/run/utmp", "r");
 	if (!utmp_file)
 	{
 		perror("Error abriendo /var/run/utmp");
@@ -633,17 +675,33 @@ void obtener_usuarios(char usuarios[MAX_USERS][MAX_STRING_LENGTH], int *num_usua
 		strcpy(project, "N/A");
 
 		setutent();
-		while ((ut = getutent()) != NULL)
-		{
-			if (ut->ut_type == USER_PROCESS && strcmp(ut->ut_user, pwd->pw_name) == 0)
-			{
-				snprintf(terminal, sizeof(terminal), "%s", ut->ut_line);
-				snprintf(where, sizeof(where), "%s", ut->ut_host);
-				strftime(login_time, sizeof(login_time), "%Y-%m-%d %H:%M:%S", localtime(&ut->ut_tv.tv_sec));
-				break;
-			}
-		}
-		endutent();
+        while ((ut = getutent()) != NULL) {
+            if (ut->ut_type == USER_PROCESS && strcmp(ut->ut_user, pwd->pw_name) == 0) {
+                snprintf(terminal, sizeof(terminal), "%s", ut->ut_line);
+                snprintf(where, sizeof(where), "%s", ut->ut_host);
+                if (where[0] == '\0') strcpy(where, "N/A");
+
+                strftime(login_time, sizeof(login_time), "%Y-%m-%d %H:%M:%S", localtime(&ut->ut_tv.tv_sec));
+
+                // Calcular tiempo de inactividad
+                char term_path[100];
+                snprintf(term_path, sizeof(term_path), "/dev/%s", ut->ut_line);
+                struct stat term_stat;
+                if (stat(term_path, &term_stat) == 0) {
+                    time_t now = time(NULL);
+                    int idle_seconds = now - term_stat.st_atime;
+                    snprintf(idle_time, sizeof(idle_time), "%d minutes %d seconds idle", idle_seconds / 60, idle_seconds % 60);
+                }
+
+                // Verificar mensajes (permissions en el terminal)
+                if (access(term_path, W_OK) == 0) {
+                    strcpy(messages_status, "messages on");
+                }
+
+                break;
+            }
+        }
+        endutent();
 
 		if (strcmp(login_time, "N/A") == 0)
 		{
@@ -656,45 +714,62 @@ void obtener_usuarios(char usuarios[MAX_USERS][MAX_STRING_LENGTH], int *num_usua
 		strcpy(NAME, pwd->pw_gecos);
 		strcpy(LOGIN, usuario);
 
+		// Separar en palabras
 		char *NAME2 = strtok(NAME, " ");
 		char *LOGIN2 = strtok(LOGIN, " ");
 
+		// Convertir a minúsculas
 		for (i = 0; i < strlen(NAME2); i++)
 		{
 			NAME2[i] = tolower(NAME2[i]);
 		}
-		for (i = 0; i <= strlen(LOGIN2); i++)
+
+		for (i = 0; i < strlen(LOGIN2); i++)
 		{
 			LOGIN2[i] = tolower(LOGIN2[i]);
 		}
-		if ((strcmp(NAME2, LOGIN2) != 0) && (strcasecmp(usuario, "null") != 0))
+
+		// Asegurarse de que no haya saltos de línea en las subcadenas
+		if (j == 0)
 		{
+			strcat(NAME2, "\r\n");
+			if ((strcmp(NAME2, LOGIN2) != 0) && (strcmp(LOGIN2, "null\r\n") != 0))
+			{
+				continue;
+			}
+		}
+		if (j == 1)
+		{
+			if ((strcmp(NAME2, LOGIN2) != 0) && (strcmp(LOGIN2, "null") != 0))
+			{
 			continue;
+			}
 		}
 
-		leer_archivo_usuario(pwd->pw_dir, ".plan", plan, sizeof(plan));
-		leer_archivo_usuario(pwd->pw_dir, ".project", project, sizeof(project));
+        char mail_path[100];
+        snprintf(mail_path, sizeof(mail_path), "/var/mail/%s", pwd->pw_name);
+        struct stat mail_stat;
+        if (stat(mail_path, &mail_stat) == 0 && mail_stat.st_size > 0) {
+            strcpy(mail_status, "You have mail.");
+        }
 
-		snprintf(buffer, MAX_STRING_LENGTH,
-				 "%s;%s;%s;%s;%s;%s;%s;%s;%s-\r\n",
-				 pwd->pw_name, pwd->pw_gecos, terminal, login_time, where,pwd->pw_dir, pwd->pw_shell, plan, project);
+        leer_archivo_usuario(pwd->pw_dir, ".plan", plan, sizeof(plan));
+        leer_archivo_usuario(pwd->pw_dir, ".project", project, sizeof(project));
 
+        snprintf(buffer, MAX_STRING_LENGTH,
+                 "Login: %s;Name: %s;Directory: %s;Shell: %s;On since: %s;Idle: %s;%s;%s;Plan: %s",
+                 pwd->pw_name, pwd->pw_gecos, pwd->pw_dir, pwd->pw_shell, login_time,
+                 idle_time, messages_status, mail_status, plan);
 
-		// Copiar buffer y buffer_parcial en líneas consecutivas del array
-		if (*num_usuarios + 1 < MAX_USERS)
-		{
-			strncpy(usuarios[*num_usuarios], buffer, MAX_STRING_LENGTH - 1);
-			usuarios[*num_usuarios][MAX_STRING_LENGTH - 1] = '\0'; // Asegurar terminación
-			(*num_usuarios)++;
-
-		}
-		else
-		{
-			fprintf(stderr, "Error: Número máximo de usuarios excedido.\n");
-			break;
-		}
+        if (*num_usuarios < MAX_USERS) {
+            strncpy(usuarios[*num_usuarios], buffer, MAX_STRING_LENGTH - 1);
+            usuarios[*num_usuarios][MAX_STRING_LENGTH - 1] = '\0';
+            (*num_usuarios)++;
+        } else {
+            fprintf(stderr, "Error: Número máximo de usuarios excedido.\n");
+            break;
+        }
 	}
-
 	fclose(utmp_file);
 	endpwent();
 }
