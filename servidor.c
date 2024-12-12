@@ -20,6 +20,7 @@
 #include <pwd.h>
 #include <utmp.h>
 #include <sys/stat.h>
+#include <asm-generic/fcntl.h>
 
 #define PUERTO 13131
 #define ADDRNOTFOUND 0xffffffff /* return address for unfound host */
@@ -531,7 +532,7 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 	registrar_evento("Orden recibida", "Cliente", client_ip, "UDP", ntohs(clientaddr_in.sin_port), buffer, NULL);
 
 	char respuesta[512] = "Usuarios encontrados:\n";
-	for ( i = 0; i < num_usuarios; i++)
+	for (int i = 0; i < num_usuarios; i++)
 	{
 		strncat(respuesta, usuarios[i], sizeof(respuesta) - strlen(respuesta) - 1);
 		strncat(respuesta, "\n", sizeof(respuesta) - strlen(respuesta) - 1);
@@ -565,26 +566,8 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 		printf("No se pudo enviar la respuesta al cliente con el numero de usuarios.\n");
 		return;
 	}
-
-	i= 0;
-
-	while (i < num_usuarios)
-	{
-
-		nc = sendto(s, usuarios[i], strlen(usuarios[i]), 0, (struct sockaddr *)&clientaddr_in, addrlen);
-		if (nc == -1)
-		{
-			perror("Error al enviar respuesta");
-			printf("No se pudo enviar la respuesta al cliente con cada usuario.\n");
-			return;
-		}
-		i++;
-	}
-
 	nc = sendto(s, "FINALIZAR", 9, 0, (struct sockaddr *)&clientaddr_in, addrlen);
 	registrar_evento("Comunicación finalizada", "Cliente", client_ip, "UDP", ntohs(clientaddr_in.sin_port), NULL, NULL);
-
-	
 }
 
 // Función para leer archivos de usuario (.plan y .project)
@@ -614,10 +597,29 @@ void leer_archivo_usuario(const char *home, const char *filename, char *buffer, 
 
 void registrar_evento(const char *descripcion, const char *host, const char *ip, const char *protocolo, int puerto, const char *orden, const char *respuesta)
 {
-	FILE *log_file = fopen("registro.log", "a"); // Modo de edición
-	if (!log_file)
+	// Abrir el archivo en modo de apéndice
+	int log_fd = open("registro.log", O_WRONLY | O_APPEND | O_CREAT, 0644);
+	if (log_fd == -1)
 	{
 		perror("Error al abrir el archivo de log");
+		return;
+	}
+
+	// Bloquear el archivo para acceso exclusivo
+	if (flock(log_fd, LOCK_EX) == -1)
+	{
+		perror("Error al bloquear el archivo de log");
+		close(log_fd);
+		return;
+	}
+
+	// Convertir el descriptor de archivo en FILE* para usar fprintf
+	FILE *log_file = fdopen(log_fd, "a");
+	if (!log_file)
+	{
+		perror("Error al asociar el descriptor de archivo con FILE*");
+		flock(log_fd, LOCK_UN); // Liberar el bloqueo si falla
+		close(log_fd);
 		return;
 	}
 
@@ -626,6 +628,7 @@ void registrar_evento(const char *descripcion, const char *host, const char *ip,
 	char fecha_hora[50];
 	strftime(fecha_hora, sizeof(fecha_hora), "%Y-%m-%d %H:%M:%S", localtime(&now)); // Formato: YYYY-MM-DD HH:MM:SS
 
+	// Escribir en el archivo de log
 	fprintf(log_file, "Fecha y hora: %s\n", fecha_hora);
 	fprintf(log_file, "Descripción: %s\n", descripcion);
 	fprintf(log_file, "Comunicación realizada: Host=%s, IP=%s, Protocolo=%s, Puerto=%d\n", host, ip, protocolo, puerto);
@@ -639,7 +642,10 @@ void registrar_evento(const char *descripcion, const char *host, const char *ip,
 	}
 	fprintf(log_file, "\n----------------------------------------\n");
 
-	fclose(log_file);
+	// Cerrar el archivo y liberar el bloqueo
+	fclose(log_file); // Esto también cierra el descriptor subyacente
+	// flock se libera automáticamente al cerrar el archivo, pero puedes usar explicitamente:
+	flock(log_fd, LOCK_UN);
 }
 
 // Función para obtener la información de los usuarios
@@ -655,8 +661,8 @@ void obtener_usuarios(char usuarios[MAX_USERS][MAX_STRING_LENGTH], int *num_usua
 	char project[256] = "N/A";
 	char buffer[516];
 	char mail_status[50] = "No mail.";
-    char messages_status[50] = "messages off";
-    char idle_time[50] = "N/A";
+	char messages_status[50] = "messages off";
+	char idle_time[50] = "N/A";
 
 	utmp_file = fopen("/var/run/utmp", "r");
 	if (!utmp_file)
@@ -677,33 +683,38 @@ void obtener_usuarios(char usuarios[MAX_USERS][MAX_STRING_LENGTH], int *num_usua
 		strcpy(project, "N/A");
 
 		setutent();
-        while ((ut = getutent()) != NULL) {
-            if (ut->ut_type == USER_PROCESS && strcmp(ut->ut_user, pwd->pw_name) == 0) {
-                snprintf(terminal, sizeof(terminal), "%s", ut->ut_line);
-                snprintf(where, sizeof(where), "%s", ut->ut_host);
-                if (where[0] == '\0') strcpy(where, "N/A");
+		while ((ut = getutent()) != NULL)
+		{
+			if (ut->ut_type == USER_PROCESS && strcmp(ut->ut_user, pwd->pw_name) == 0)
+			{
+				snprintf(terminal, sizeof(terminal), "%s", ut->ut_line);
+				snprintf(where, sizeof(where), "%s", ut->ut_host);
+				if (where[0] == '\0')
+					strcpy(where, "N/A");
 
-                strftime(login_time, sizeof(login_time), "%Y-%m-%d %H:%M:%S", localtime(&ut->ut_tv.tv_sec));
+				strftime(login_time, sizeof(login_time), "%Y-%m-%d %H:%M:%S", localtime(&ut->ut_tv.tv_sec));
 
-                // Calcular tiempo de inactividad
-                char term_path[100];
-                snprintf(term_path, sizeof(term_path), "/dev/%s", ut->ut_line);
-                struct stat term_stat;
-                if (stat(term_path, &term_stat) == 0) {
-                    time_t now = time(NULL);
-                    int idle_seconds = now - term_stat.st_atime;
-                    snprintf(idle_time, sizeof(idle_time), "%d minutes %d seconds idle", idle_seconds / 60, idle_seconds % 60);
-                }
+				// Calcular tiempo de inactividad
+				char term_path[100];
+				snprintf(term_path, sizeof(term_path), "/dev/%s", ut->ut_line);
+				struct stat term_stat;
+				if (stat(term_path, &term_stat) == 0)
+				{
+					time_t now = time(NULL);
+					int idle_seconds = now - term_stat.st_atime;
+					snprintf(idle_time, sizeof(idle_time), "%d minutes %d seconds idle", idle_seconds / 60, idle_seconds % 60);
+				}
 
-                // Verificar mensajes (permissions en el terminal)
-                if (access(term_path, W_OK) == 0) {
-                    strcpy(messages_status, "messages on");
-                }
+				// Verificar mensajes (permissions en el terminal)
+				if (access(term_path, W_OK) == 0)
+				{
+					strcpy(messages_status, "messages on");
+				}
 
-                break;
-            }
-        }
-        endutent();
+				break;
+			}
+		}
+		endutent();
 
 		if (strcmp(login_time, "N/A") == 0)
 		{
@@ -744,33 +755,37 @@ void obtener_usuarios(char usuarios[MAX_USERS][MAX_STRING_LENGTH], int *num_usua
 		{
 			if ((strcmp(NAME2, LOGIN2) != 0) && (strcmp(LOGIN2, "null") != 0))
 			{
-			continue;
+				continue;
 			}
 		}
 
-        char mail_path[100];
-        snprintf(mail_path, sizeof(mail_path), "/var/mail/%s", pwd->pw_name);
-        struct stat mail_stat;
-        if (stat(mail_path, &mail_stat) == 0 && mail_stat.st_size > 0) {
-            strcpy(mail_status, "You have mail.");
-        }
+		char mail_path[100];
+		snprintf(mail_path, sizeof(mail_path), "/var/mail/%s", pwd->pw_name);
+		struct stat mail_stat;
+		if (stat(mail_path, &mail_stat) == 0 && mail_stat.st_size > 0)
+		{
+			strcpy(mail_status, "You have mail.");
+		}
 
-        leer_archivo_usuario(pwd->pw_dir, ".plan", plan, sizeof(plan));
-        leer_archivo_usuario(pwd->pw_dir, ".project", project, sizeof(project));
+		leer_archivo_usuario(pwd->pw_dir, ".plan", plan, sizeof(plan));
+		leer_archivo_usuario(pwd->pw_dir, ".project", project, sizeof(project));
 
-        snprintf(buffer, MAX_STRING_LENGTH,
-                 "Login: %s;Name: %s;Directory: %s;Shell: %s;On since: %s;Idle: %s;%s;%s;Plan: %s",
-                 pwd->pw_name, pwd->pw_gecos, pwd->pw_dir, pwd->pw_shell, login_time,
-                 idle_time, messages_status, mail_status, plan);
+		snprintf(buffer, MAX_STRING_LENGTH,
+				 "Login: %s;Name: %s;Directory: %s;Shell: %s;On since: %s;Idle: %s;%s;%s;Plan: %s",
+				 pwd->pw_name, pwd->pw_gecos, pwd->pw_dir, pwd->pw_shell, login_time,
+				 idle_time, messages_status, mail_status, plan);
 
-        if (*num_usuarios < MAX_USERS) {
-            strncpy(usuarios[*num_usuarios], buffer, MAX_STRING_LENGTH - 1);
-            usuarios[*num_usuarios][MAX_STRING_LENGTH - 1] = '\0';
-            (*num_usuarios)++;
-        } else {
-            fprintf(stderr, "Error: Número máximo de usuarios excedido.\n");
-            break;
-        }
+		if (*num_usuarios < MAX_USERS)
+		{
+			strncpy(usuarios[*num_usuarios], buffer, MAX_STRING_LENGTH - 1);
+			usuarios[*num_usuarios][MAX_STRING_LENGTH - 1] = '\0';
+			(*num_usuarios)++;
+		}
+		else
+		{
+			fprintf(stderr, "Error: Número máximo de usuarios excedido.\n");
+			break;
+		}
 	}
 	fclose(utmp_file);
 	endpwent();
