@@ -525,7 +525,7 @@ void funcionUDP(char usuario[], char host[])
 					alarm(0); // Cancelar la alarma
 					n_retry = RETRIES;
 					buffer[BUFFERSIZE - 1] = '\0';
-					formatear_cadena(buffer);
+					formatear_cadena(buffer, ntohs(myaddr_in.sin_port));
 					j++;
 				}
 			}
@@ -545,11 +545,12 @@ void funcionUDP(char usuario[], char host[])
 	close(s);
 }
 
-void formatear_cadena(char *cadena) {
+void formatear_cadena(char *cadena, unsigned short puerto) {
     char user[100], full_name[100], tty[50], login_time[100];
     char home_dir[100], where[100], shell[100], plan[256], project[256];
     char idle_time[100], mail_status[50], messages_status[50];
-
+	char puerto_string[6];
+	sprintf(puerto_string, "%hu", puerto);
     // Dividir la cadena de entrada por los delimitadores ";" con strtok
     char *token = strtok(cadena, ";");
     strcpy(user, token ? token : "N/A");
@@ -588,7 +589,9 @@ void formatear_cadena(char *cadena) {
     strcpy(messages_status, token ? token : "messages off");
 
     // Escritura en archivo
-    const char *filename = "registro.txt";
+	//
+	char * nombre_fich = strcat(puerto_string, ".txt");
+    const char *filename = nombre_fich;
     FILE *file = fopen(filename, "a");
     if (file == NULL) {
         perror("Error abriendo el archivo");
