@@ -543,30 +543,30 @@ void serverUDP(int s, char *buffer, struct sockaddr_in clientaddr_in)
 	struct addrinfo hints, *res;
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
-	/*
-	errcode = getaddrinfo(buffer, NULL, &hints, &res);
-	if (errcode != 0) {
-		printf("No se pudo resolver '%s'.\n", buffer);
-		reqaddr.s_addr = ADDRNOTFOUND;
-	} else {
-		reqaddr = ((struct sockaddr_in *)res->ai_addr)->sin_addr;
-		freeaddrinfo(res);
-	}
-	*/
-	// Enviar la dirección resuelta al cliente
-
-	// campos de sendto: socket, mensaje, longitud del mensaje, flags, dirección del cliente, longitud de la dirección
 
 	snprintf(num_usuarios_string, sizeof(num_usuarios_string), "%d", num_usuarios);
 	nc = sendto(s, num_usuarios_string, sizeof(num_usuarios_string), 0, (struct sockaddr *)&clientaddr_in, addrlen);
 	if (nc == -1)
 	{
-		// p
+
 		perror("Error al enviar respuesta");
 		printf("No se pudo enviar la respuesta al cliente con el numero de usuarios.\n");
 		return;
 	}
-	nc = sendto(s, "FINALIZAR", 9, 0, (struct sockaddr *)&clientaddr_in, addrlen);
+	i= 0;
+	while (i < num_usuarios)
+	{
+
+		nc = sendto(s, usuarios[i], strlen(usuarios[i]), 0, (struct sockaddr *)&clientaddr_in, addrlen);
+		if (nc == -1)
+		{
+			perror("Error al enviar respuesta");
+			printf("No se pudo enviar la respuesta al cliente con los usuarios.\n");
+			return;
+		}
+		i++;
+	}
+	//nc = sendto(s, "FINALIZAR", 9, 0, (struct sockaddr *)&clientaddr_in, addrlen);
 	registrar_evento("Comunicación finalizada", "Cliente", client_ip, "UDP", ntohs(clientaddr_in.sin_port), NULL, NULL);
 }
 
@@ -597,7 +597,6 @@ void leer_archivo_usuario(const char *home, const char *filename, char *buffer, 
 
 void registrar_evento(const char *descripcion, const char *host, const char *ip, const char *protocolo, int puerto, const char *orden, const char *respuesta)
 {
-	// Abrir el archivo en modo de apéndice
 	int log_fd = open("registro.log", O_WRONLY | O_APPEND | O_CREAT, 0644);
 	if (log_fd == -1)
 	{
@@ -642,9 +641,9 @@ void registrar_evento(const char *descripcion, const char *host, const char *ip,
 	}
 	fprintf(log_file, "\n----------------------------------------\n");
 
-	// Cerrar el archivo y liberar el bloqueo
-	fclose(log_file); // Esto también cierra el descriptor subyacente
-	// flock se libera automáticamente al cerrar el archivo, pero puedes usar explicitamente:
+
+	fclose(log_file); 
+
 	flock(log_fd, LOCK_UN);
 }
 

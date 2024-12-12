@@ -33,7 +33,7 @@ extern int errno;
 #define ADDRNOTFOUND 0xffffffff /* value returned for unknown host */
 #define RETRIES 5				/* number of times to retry before givin up */
 #define BUFFERSIZE 1024			/* maximum size of packets to be received */
-#define TIMEOUT 6
+#define TIMEOUT 10 
 #define MAXHOST 512
 
 /*
@@ -126,8 +126,6 @@ int main(int argc, char *argv[])
 				exit(1);
 			}
 
-			printf("Usuario: %s\n", usuario);
-			printf("Host: %s\n", host);
 		}
 		else
 		{
@@ -260,8 +258,6 @@ void funcionTCP(char usuario[], char host[])
 	 * that this program could easily be ported to a host
 	 * that does require it.
 	 */
-	printf("TCP_Client Connected to %s on port %u at %s",
-		   host, ntohs(myaddr_in.sin_port), (char *)ctime(&timevar));
 
 	if (usuario != "null")
 	{
@@ -459,7 +455,15 @@ void funcionUDP(char usuario[], char host[])
 	}
 
 	n_retry = RETRIES;
-
+	char puerto_string[6];
+	sprintf(puerto_string, "%hu", ntohs(myaddr_in.sin_port));
+	char * fichero = strcat(puerto_string, ".txt");
+	FILE *file = fopen(fichero, "a");
+	if (file == NULL)
+	{
+		perror("Error abriendo el archivo");
+		exit(EXIT_FAILURE);
+	}
 	while (n_retry > 0)
 	{
 		// Enviar el mensaje al servidor
@@ -481,7 +485,7 @@ void funcionUDP(char usuario[], char host[])
 			{
 				if (errno == EINTR)
 				{ // Timeout ocurrió
-					printf("Intento %d fallido, reintentando...\n", RETRIES - n_retry + 1);
+					fprintf(file,"Intento %d fallido, reintentando...\n", RETRIES - n_retry + 1);
 					n_retry--;
 				}
 				else
@@ -496,21 +500,21 @@ void funcionUDP(char usuario[], char host[])
 				num_usuarios = atoi(num_usuarios_string);
 				alarm(0); // Cancelar la alarma
 				n_retry = RETRIES;
-				printf("Usuarios encontrados recibidos en cliente: %d\n", num_usuarios);
 			}
 		}
 
 		if (num_usuarios != -1)
 		{
 			alarm(TIMEOUT);
+			j=0;
 			while (j < num_usuarios)
 			{
 				memset(buffer, 0, BUFFERSIZE);
 				if (recvfrom(s, &buffer, BUFFERSIZE - 1, 0, (struct sockaddr *)&servaddr_in, &addrlen) == -1)
 				{
 					if (errno == EINTR)
-					{ // Timeout ocurrió
-						printf("Intento %d fallido, reintentando...\n", RETRIES - n_retry + 1);
+					{ // Timeout ocurrió apuntar en el fichero
+						fprintf(file,"Intento %d fallido, reintentando...\n", RETRIES - n_retry + 1);
 						n_retry--;
 					}
 					else
@@ -539,7 +543,7 @@ void funcionUDP(char usuario[], char host[])
 	// Si se agotaron los intentos
 	if (n_retry == 0)
 	{
-		printf("No se pudo obtener respuesta después de %d intentos.\n", RETRIES);
+		fprintf(file,"No se pudo obtener respuesta después de %d intentos.\n", RETRIES);
 	}
 
 	close(s);
